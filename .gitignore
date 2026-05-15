@@ -32,3 +32,12 @@ out/
 
 # Logs
 *.log
+patch_*.py
+.project
+.classpath
+.settings/
+app/.project
+app/.classpath
+app/.settings/
+Task
+deploy.sh
