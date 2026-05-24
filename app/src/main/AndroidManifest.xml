@@ -48,6 +48,30 @@
             android:windowSoftInputMode="adjustPan"
             android:screenOrientation="portrait" />
 
+        <service
+            android:name=".autofill.CleanthesAutofillService"
+            android:label="Cleanthes"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service_config" />
+        </service>
+
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".autofill.AutofillAuthActivity"
+            android:theme="@style/Theme.Cleanthes.Transparent"
+            android:exported="false" />
+
+
     </application>
 </manifest>
 

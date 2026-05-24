@@ -21,7 +21,7 @@
     <string name="login_subtitle">The gate does not ask twice.</string>
     <string name="login_label_password">Unlock Vault</string>
     <string name="login_btn_unlock">AUTHENTICATE</string>
-    <string name="login_biometric_hint">Tap sensor to unlock</string>
+    <string name="login_biometric_hint">or present your hand to the gate.</string>
 
     <!-- Accessibility & UI Utility -->
     <string name="cd_cleanthes_logo">Cleanthes App Logo</string>

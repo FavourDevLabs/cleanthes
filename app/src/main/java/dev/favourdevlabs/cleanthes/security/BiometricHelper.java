@@ -60,11 +60,13 @@ public class BiometricHelper {
         BiometricPrompt biometricPrompt = new BiometricPrompt(activity, executor, authCallback);
 
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock Cleanthes")
-                .setSubtitle("Confirm your identity to access your fault")
+                .setTitle("The Inner Citadel")
+                .setSubtitle("The disciplined alone may enter.")
                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG
                         | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                 .build();
+        android.util.Log.d("CLEANTHES_BIO", "biometricPrompt.authenticate() about to fire");
+
         biometricPrompt.authenticate(promptInfo);
     }
 

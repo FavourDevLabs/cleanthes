@@ -65,24 +65,6 @@ public class LoginActivity extends AppCompatActivity {
         bindViews();
         attachListeners();
 
-        if (biometricEnabled && BiometricHelper.isBiometricAvailable(this)) {
-            BiometricHelper.authenticate(this, new BiometricHelper.AuthCallback() {
-                @Override
-                public void onSuccess() {
-                    deriveKeyAndNavigate(null, true);
-                }
-
-                @Override
-                public void onFailure() {
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    showError(errorMessage);
-                }
-            });
-        }
-
     }
 
     @Override
@@ -111,11 +93,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void bindViews() {
-        if (!biometricEnabled || !BiometricHelper.isBiometricAvailable(this)) {
-            divider.setVisibility(View.GONE);
-            tvBiometricHint.setVisibility(View.GONE);
-            btnBiometric.setVisibility(View.GONE);
-        }
+        // findViewByIds ALWAYS come first — never reference a view before this
         etPassword = findViewById(R.id.login_et_password);
         btnTogglePassword = findViewById(R.id.login_btn_toggle_password);
         tvError = findViewById(R.id.login_tv_error);
@@ -126,7 +104,15 @@ public class LoginActivity extends AppCompatActivity {
         btnBiometric = findViewById(R.id.login_btn_biometric);
         progressBar = findViewById(R.id.login_progress);
 
-        // Force gold — Material Button overrides backgroundTint to gray when disabled
+        // Show biometric section only when it's actually usable
+        if (biometricEnabled && BiometricHelper.isBiometricAvailable(this)) {
+            divider.setVisibility(View.VISIBLE);
+            tvBiometricHint.setVisibility(View.VISIBLE);
+            btnBiometric.setVisibility(View.VISIBLE);
+        }
+        // else: all three stay GONE as declared in XML — no action needed
+
+        // Force gold — Material overrides backgroundTint to gray when disabled
         btnUnlock.setBackgroundTintList(
                 ColorStateList.valueOf(ContextCompat.getColor(this, R.color.citadel_gold)));
     }
@@ -155,8 +141,8 @@ public class LoginActivity extends AppCompatActivity {
             if (!isLockedOut)
                 attemptPasswordUnlock();
         });
-
         btnBiometric.setOnClickListener(v -> {
+
             if (BiometricHelper.isBiometricAvailable(this)) {
                 BiometricHelper.authenticate(this, new BiometricHelper.AuthCallback() {
                     @Override
@@ -173,9 +159,10 @@ public class LoginActivity extends AppCompatActivity {
                         showError(errorMessage);
                     }
                 });
+            } else {
             }
-
         });
+
     }
 
     private void attemptPasswordUnlock() {
