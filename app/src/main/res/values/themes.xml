@@ -26,7 +26,8 @@
     <!-- Splash Screen — shown on every launch before SetupActivity -->
     <style name="Theme.Cleanthes.SplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/cleanthes_black</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_cleanthes_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_lock</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/cleanthes_black</item>
         <item name="postSplashScreenTheme">@style/Theme.Cleanthes</item>
     </style>
 </resources>
