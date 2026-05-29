@@ -13,11 +13,20 @@ public class VaultEntry {
     private long updatedAt;
     private boolean isFavorite;
 
+    // TOTP fields — null totpSecret means this entry has no TOTP configured.
+    // totpSecret is AES-256-GCM encrypted before being stored, same as
+    // encryptedPassword.
+    // totpIssuer is plaintext (e.g. "GitHub") — not sensitive on its own.
+    private String totpSecret;
+    private String totpIssuer;
+    private int totpDigits = 6; // 6 for virtually every real-world service
+    private int totpPeriod = 30; // 30 seconds — the RFC default
+
     public VaultEntry() {
     }
 
-    public VaultEntry(String title, String username, String encryptedPassword, String website, String category,
-            String notes, boolean isFavorite) {
+    public VaultEntry(String title, String username, String encryptedPassword,
+            String website, String category, String notes, boolean isFavorite) {
         this.title = title;
         this.username = username;
         this.encryptedPassword = encryptedPassword;
@@ -26,6 +35,13 @@ public class VaultEntry {
         this.notes = notes;
         this.isFavorite = isFavorite;
     }
+
+    /** True when this entry has a TOTP secret configured. */
+    public boolean hasTOTP() {
+        return totpSecret != null && !totpSecret.isEmpty();
+    }
+
+    // --- Getters ---
 
     public long getId() {
         return id;
@@ -67,6 +83,24 @@ public class VaultEntry {
         return isFavorite;
     }
 
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    public String getTotpIssuer() {
+        return totpIssuer;
+    }
+
+    public int getTotpDigits() {
+        return totpDigits;
+    }
+
+    public int getTotpPeriod() {
+        return totpPeriod;
+    }
+
+    // --- Setters ---
+
     public void setId(long id) {
         this.id = id;
     }
@@ -107,15 +141,32 @@ public class VaultEntry {
         isFavorite = favorite;
     }
 
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
+
+    public void setTotpIssuer(String totpIssuer) {
+        this.totpIssuer = totpIssuer;
+    }
+
+    public void setTotpDigits(int totpDigits) {
+        this.totpDigits = totpDigits;
+    }
+
+    public void setTotpPeriod(int totpPeriod) {
+        this.totpPeriod = totpPeriod;
+    }
+
     @Override
     public String toString() {
-        return "VaultEntry{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
-                ", username='" + username + '\'' +
-                ", category='" + category + '\'' +
-                ", isFavorite=" + isFavorite +
-                ", createdAt=" + createdAt +
-                '}';
+        return "VaultEntry{"
+                + "id=" + id
+                + ", title='" + title + '\''
+                + ", username='" + username + '\''
+                + ", category='" + category + '\''
+                + ", isFavorite=" + isFavorite
+                + ", hasTOTP=" + hasTOTP()
+                + ", createdAt=" + createdAt
+                + '}';
     }
 }

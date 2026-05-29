@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -23,8 +22,8 @@ import androidx.core.content.ContextCompat;
 import dev.favourdevlabs.cleanthes.R;
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry;
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository;
+import dev.favourdevlabs.cleanthes.security.TOTPGenerator;
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager;
-import dev.favourdevlabs.cleanthes.ui.home.HomeActivity;
 import dev.favourdevlabs.cleanthes.utils.PasswordGenerator;
 
 import javax.crypto.SecretKey;
@@ -46,6 +45,7 @@ public class AddEditActivity extends AppCompatActivity {
     private EditText etWebsite;
     private Spinner spinnerCategory;
     private EditText etNotes;
+    private EditText etTotpSecret; // new
     private CheckBox checkBoxFavorite;
     private TextView tvError;
     private Button btnDelete;
@@ -59,13 +59,9 @@ public class AddEditActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-         
-
         setContentView(R.layout.activity_add_edit);
 
         repository = VaultRepository.getInstance(this);
-
         bindViews();
         setupCategorySpinner();
         determineMode();
@@ -84,6 +80,7 @@ public class AddEditActivity extends AppCompatActivity {
         etWebsite = findViewById(R.id.addedit_et_website);
         spinnerCategory = findViewById(R.id.addedit_spinner_category);
         etNotes = findViewById(R.id.addedit_et_notes);
+        etTotpSecret = findViewById(R.id.addedit_et_totp_secret);
         checkBoxFavorite = findViewById(R.id.addedit_checkbox_favorite);
         tvError = findViewById(R.id.addedit_tv_error);
         btnDelete = findViewById(R.id.btn_delete);
@@ -102,16 +99,13 @@ public class AddEditActivity extends AppCompatActivity {
 
     private void setupCategorySpinner() {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-                this,
-                R.array.categories_array,
-                android.R.layout.simple_spinner_item);
+                this, R.array.categories_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerCategory.setAdapter(adapter);
     }
 
     private void determineMode() {
         entryId = getIntent().getLongExtra(EXTRA_ENTRY_ID, NO_ENTRY_ID);
-
         if (entryId != NO_ENTRY_ID) {
             isEditMode = true;
             tvScreenTitle.setText(getString(R.string.addedit_title_edit));
@@ -138,9 +132,8 @@ public class AddEditActivity extends AppCompatActivity {
                     if (entry != null) {
                         existingEntry = entry;
                         populateFields(entry);
-                    } else {
+                    } else
                         finish();
-                    }
                 });
             } catch (Exception e) {
                 runOnUiThread(this::finish);
@@ -151,9 +144,11 @@ public class AddEditActivity extends AppCompatActivity {
     private void populateFields(VaultEntry entry) {
         etTitle.setText(entry.getTitle());
         etUsername.setText(entry.getUsername());
-        etPassword.setText(entry.getEncryptedPassword());
+        etPassword.setText(entry.getEncryptedPassword()); // plaintext after decryptEntry
         etWebsite.setText(entry.getWebsite() != null ? entry.getWebsite() : "");
         etNotes.setText(entry.getNotes() != null ? entry.getNotes() : "");
+        // TOTP secret is already plaintext after decryptEntry — populate as-is
+        etTotpSecret.setText(entry.getTotpSecret() != null ? entry.getTotpSecret() : "");
         checkBoxFavorite.setChecked(entry.isFavorite());
 
         ArrayAdapter adapter = (ArrayAdapter) spinnerCategory.getAdapter();
@@ -165,20 +160,14 @@ public class AddEditActivity extends AppCompatActivity {
     }
 
     private void attachListeners() {
-
         btnBack.setOnClickListener(v -> finish());
-
         btnSave.setOnClickListener(v -> attemptSave());
-
         btnTogglePassword.setOnClickListener(v -> {
             passwordVisible = !passwordVisible;
             togglePasswordVisibility(passwordVisible);
         });
-
         btnGenerate.setOnClickListener(v -> showGeneratorDialog());
-
         btnDelete.setOnClickListener(v -> confirmDelete());
-
         etPassword.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -197,6 +186,10 @@ public class AddEditActivity extends AppCompatActivity {
         String notes = etNotes.getText().toString().trim();
         boolean fav = checkBoxFavorite.isChecked();
 
+        // Normalise TOTP secret: uppercase, strip spaces (user may paste with spaces)
+        String totpInput = etTotpSecret.getText().toString()
+                .trim().toUpperCase().replaceAll("\\s+", "");
+
         if (title.isEmpty()) {
             showError("Title is required");
             etTitle.requestFocus();
@@ -213,6 +206,18 @@ public class AddEditActivity extends AppCompatActivity {
             return;
         }
 
+        // Validate TOTP secret by attempting a live generation.
+        // Catches bad Base32 before it ever reaches the DB.
+        if (!totpInput.isEmpty()) {
+            try {
+                TOTPGenerator.generate(totpInput);
+            } catch (Exception e) {
+                showError("Invalid authenticator secret — check the Base32 code");
+                etTotpSecret.requestFocus();
+                return;
+            }
+        }
+
         SecretKey key = SessionManager.getSessionKey();
         if (key == null) {
             finish();
@@ -220,6 +225,8 @@ public class AddEditActivity extends AppCompatActivity {
         }
 
         setFormEnabled(false);
+
+        final String finalTotpInput = totpInput.isEmpty() ? null : totpInput;
 
         new Thread(() -> {
             try {
@@ -230,6 +237,9 @@ public class AddEditActivity extends AppCompatActivity {
                     existingEntry.setCategory(category);
                     existingEntry.setNotes(notes.isEmpty() ? null : notes);
                     existingEntry.setFavorite(fav);
+                    // Overwrite the TOTP secret with whatever the user has in the field.
+                    // null means "remove TOTP from this entry".
+                    existingEntry.setTotpSecret(finalTotpInput);
                     repository.updateEntry(existingEntry, password, key);
                 } else {
                     repository.addEntry(
@@ -237,7 +247,10 @@ public class AddEditActivity extends AppCompatActivity {
                             website.isEmpty() ? null : website,
                             category,
                             notes.isEmpty() ? null : notes,
-                            fav, key);
+                            fav,
+                            finalTotpInput, title, // issuer = entry title
+                            6, 30,
+                            key);
                 }
                 runOnUiThread(() -> {
                     setFormEnabled(true);
@@ -265,7 +278,6 @@ public class AddEditActivity extends AppCompatActivity {
     private void performDelete() {
         if (!isEditMode || existingEntry == null)
             return;
-
         new Thread(() -> {
             try {
                 repository.deleteEntry(existingEntry.getId());
@@ -304,13 +316,15 @@ public class AddEditActivity extends AppCompatActivity {
         btnMinus.setText("−");
         btnMinus.setTextSize(16);
         btnMinus.setTextColor(getColor(R.color.cleanthes_black));
-        btnMinus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.citadel_gold)));
+        btnMinus.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(getColor(R.color.citadel_gold)));
 
         Button btnPlus = new Button(this);
         btnPlus.setText("+");
         btnPlus.setTextSize(16);
         btnPlus.setTextColor(getColor(R.color.cleanthes_black));
-        btnPlus.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.citadel_gold)));
+        btnPlus.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(getColor(R.color.citadel_gold)));
 
         lengthRow.addView(tvLengthLabel);
         lengthRow.addView(btnMinus);
@@ -331,23 +345,20 @@ public class AddEditActivity extends AppCompatActivity {
         tvPreview.setTextSize(14);
         tvPreview.setTypeface(android.graphics.Typeface.MONOSPACE);
         tvPreview.setPadding(0, dpToPx(12), 0, dpToPx(4));
-        tvPreview.setText(PasswordGenerator.generate(
-                length[0], true, true, true, true));
+        tvPreview.setText(PasswordGenerator.generate(length[0], true, true, true, true));
         layout.addView(tvPreview);
 
-        Button btnRegan = new Button(this);
-        btnRegan.setText("↻  REGENERATE");
-        btnRegan.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.cleanthes_border)));
-        btnRegan.setTextColor(getColor(R.color.citadel_gold));
-        layout.addView(btnRegan);
+        Button btnRegen = new Button(this);
+        btnRegen.setText("↻  REGENERATE");
+        btnRegen.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(getColor(R.color.cleanthes_border)));
+        btnRegen.setTextColor(getColor(R.color.citadel_gold));
+        layout.addView(btnRegen);
 
         Runnable regenerate = () -> {
             try {
-                String p = PasswordGenerator.generate(
-                        length[0],
-                        uppercase[0], lowercase[0],
-                        digits[0], special[0]);
-                tvPreview.setText(p);
+                tvPreview.setText(PasswordGenerator.generate(
+                        length[0], uppercase[0], lowercase[0], digits[0], special[0]));
             } catch (IllegalArgumentException e) {
                 tvPreview.setText("Select at least one category");
             }
@@ -360,7 +371,6 @@ public class AddEditActivity extends AppCompatActivity {
                 regenerate.run();
             }
         });
-
         btnPlus.setOnClickListener(v -> {
             if (length[0] < 32) {
                 length[0]++;
@@ -368,7 +378,6 @@ public class AddEditActivity extends AppCompatActivity {
                 regenerate.run();
             }
         });
-
         cbUpper.setOnCheckedChangeListener((b, c) -> {
             uppercase[0] = c;
             regenerate.run();
@@ -385,7 +394,7 @@ public class AddEditActivity extends AppCompatActivity {
             special[0] = c;
             regenerate.run();
         });
-        btnRegan.setOnClickListener(v -> regenerate.run());
+        btnRegen.setOnClickListener(v -> regenerate.run());
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle("Forge a key")
@@ -395,7 +404,6 @@ public class AddEditActivity extends AppCompatActivity {
                     if (!generated.equals("Select at least one category")) {
                         etPassword.setText(generated);
                         updateStrengthBar(generated);
-
                         if (!passwordVisible) {
                             passwordVisible = true;
                             togglePasswordVisibility(true);
@@ -430,25 +438,20 @@ public class AddEditActivity extends AppCompatActivity {
                 R.color.cleanthes_strength_strong,
                 R.color.cleanthes_strength_very_strong
         };
-
-        int activeColor = ContextCompat.getColor(this, colorRes[score]);
-        int emptyColor = ContextCompat.getColor(this, R.color.cleanthes_strength_empty);
-
+        int active = ContextCompat.getColor(this, colorRes[score]);
+        int empty = ContextCompat.getColor(this, R.color.cleanthes_strength_empty);
         for (int i = 0; i < strengthSegments.length; i++) {
-            strengthSegments[i].setBackgroundColor(i < score ? activeColor : emptyColor);
+            strengthSegments[i].setBackgroundColor(i < score ? active : empty);
         }
     }
 
     private void togglePasswordVisibility(boolean visible) {
-        int inputType = visible
-                ? android.text.InputType.TYPE_CLASS_TEXT
-                        | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-                : android.text.InputType.TYPE_CLASS_TEXT
-                        | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD;
-        etPassword.setInputType(inputType);
+        int type = visible
+                ? android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                : android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD;
+        etPassword.setInputType(type);
         etPassword.setSelection(etPassword.getText().length());
-        btnTogglePassword.setImageResource(
-                visible ? R.drawable.ic_eye_on : R.drawable.ic_eye_off);
+        btnTogglePassword.setImageResource(visible ? R.drawable.ic_eye_on : R.drawable.ic_eye_off);
     }
 
     private void setFormEnabled(boolean enabled) {

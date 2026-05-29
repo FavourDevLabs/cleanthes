@@ -6,9 +6,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,6 +21,7 @@ import androidx.core.content.ContextCompat;
 import dev.favourdevlabs.cleanthes.R;
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry;
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository;
+import dev.favourdevlabs.cleanthes.security.TOTPGenerator;
 import dev.favourdevlabs.cleanthes.ui.addedit.AddEditActivity;
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager;
 
@@ -27,6 +31,7 @@ public class DetailActivity extends AppCompatActivity {
 
     public static final String EXTRA_ENTRY_ID = "extra_entry_id";
 
+    // Existing views
     private TextView tvToolbarTitle;
     private ImageButton btnBack;
     private Button btnEdit;
@@ -41,6 +46,17 @@ public class DetailActivity extends AppCompatActivity {
     private TextView labelNotes;
     private TextView tvNotes;
     private TextView tvFavorite;
+
+    // TOTP views
+    private TextView labelTotp;
+    private View totpRow;
+    private TextView tvTotpCode;
+    private ImageButton btnCopyTotp;
+    private ProgressBar progressBarTotp;
+
+    // TOTP countdown — runs on the main thread via Handler
+    private Handler totpHandler;
+    private Runnable totpRunnable;
 
     private VaultRepository repository;
     private String plainPassword = "";
@@ -57,7 +73,6 @@ public class DetailActivity extends AppCompatActivity {
         attachListeners();
 
         entryId = getIntent().getLongExtra(EXTRA_ENTRY_ID, -1);
-
         if (entryId == -1 || !SessionManager.isUnlocked()) {
             Toast.makeText(this, "Session invalid", Toast.LENGTH_SHORT).show();
             finish();
@@ -70,11 +85,17 @@ public class DetailActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Keep session alive + reload in case user just edited this entry
         SessionManager.refreshSession();
         if (entryId != -1 && SessionManager.isUnlocked()) {
             loadEntry(entryId);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Remove pending callbacks — prevents Handler retaining Activity reference
+        stopTotpUpdater();
     }
 
     private void bindViews() {
@@ -93,13 +114,18 @@ public class DetailActivity extends AppCompatActivity {
         tvNotes = findViewById(R.id.detail_tv_notes);
         tvFavorite = findViewById(R.id.detail_tv_favorite);
 
-        // Force gold — Material Button overrides tint when disabled
+        // TOTP views
+        labelTotp = findViewById(R.id.detail_label_totp);
+        totpRow = findViewById(R.id.detail_totp_row);
+        tvTotpCode = findViewById(R.id.detail_tv_totp_code);
+        btnCopyTotp = findViewById(R.id.detail_btn_copy_totp);
+        progressBarTotp = findViewById(R.id.detail_totp_progress);
+
         btnEdit.setBackgroundTintList(
                 ColorStateList.valueOf(ContextCompat.getColor(this, R.color.citadel_gold)));
     }
 
     private void attachListeners() {
-
         btnBack.setOnClickListener(v -> finish());
 
         btnEdit.setOnClickListener(v -> {
@@ -118,6 +144,12 @@ public class DetailActivity extends AppCompatActivity {
         btnCopyUsername.setOnClickListener(v -> copyToClipboard("username", tvUsername.getText().toString()));
 
         btnCopyPassword.setOnClickListener(v -> copyToClipboard("password", plainPassword));
+
+        // Strip the display space before copying ("123 456" → "123456")
+        btnCopyTotp.setOnClickListener(v -> {
+            String raw = tvTotpCode.getText().toString().replace(" ", "");
+            copyToClipboard("totp", raw);
+        });
     }
 
     private void loadEntry(long id) {
@@ -139,9 +171,8 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void populateUI(VaultEntry entry) {
-        // Reset password visibility on reload
         passwordVisible = false;
-        plainPassword = entry.getEncryptedPassword();
+        plainPassword = entry.getEncryptedPassword(); // already plaintext after decryptEntry
 
         tvToolbarTitle.setText(entry.getTitle());
         tvCategory.setText(entry.getCategory());
@@ -149,23 +180,86 @@ public class DetailActivity extends AppCompatActivity {
         tvPassword.setText("••••••••••••");
         btnTogglePassword.setImageResource(R.drawable.ic_eye_off);
 
-        // Website — only shown when present
         boolean hasWebsite = entry.getWebsite() != null && !entry.getWebsite().isEmpty();
         labelWebsite.setVisibility(hasWebsite ? View.VISIBLE : View.GONE);
         tvWebsite.setVisibility(hasWebsite ? View.VISIBLE : View.GONE);
         if (hasWebsite)
             tvWebsite.setText(entry.getWebsite());
 
-        // Notes — only shown when present
         boolean hasNotes = entry.getNotes() != null && !entry.getNotes().isEmpty();
         labelNotes.setVisibility(hasNotes ? View.VISIBLE : View.GONE);
         tvNotes.setVisibility(hasNotes ? View.VISIBLE : View.GONE);
         if (hasNotes)
             tvNotes.setText(entry.getNotes());
 
-        // Priority indicator
         tvFavorite.setVisibility(entry.isFavorite() ? View.VISIBLE : View.GONE);
+
+        // TOTP section
+        boolean hasTOTP = entry.hasTOTP();
+        labelTotp.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
+        totpRow.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
+        progressBarTotp.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
+
+        if (hasTOTP) {
+            startTotpUpdater(entry);
+        } else {
+            stopTotpUpdater();
+        }
     }
+
+    // -----------------------------------------------------------------------
+    // TOTP countdown
+    // -----------------------------------------------------------------------
+
+    /**
+     * Starts a 1-second tick loop that regenerates the TOTP code and updates
+     * the countdown bar. The code itself only changes every 30s (or per period),
+     * but the bar needs to shrink every second — so we tick every second.
+     */
+    private void startTotpUpdater(VaultEntry entry) {
+        stopTotpUpdater(); // clear any previous runnable first
+        totpHandler = new Handler(Looper.getMainLooper());
+        totpRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String code = TOTPGenerator.generate(
+                            entry.getTotpSecret(),
+                            entry.getTotpDigits(),
+                            entry.getTotpPeriod());
+
+                    // Split "123456" into "123 456" — much easier to read at a glance
+                    String display = (code.length() == 6)
+                            ? code.substring(0, 3) + " " + code.substring(3)
+                            : code;
+
+                    int secsLeft = TOTPGenerator.getSecondsRemaining(entry.getTotpPeriod());
+
+                    tvTotpCode.setText(display);
+                    progressBarTotp.setMax(entry.getTotpPeriod());
+                    progressBarTotp.setProgress(secsLeft);
+
+                } catch (Exception e) {
+                    tvTotpCode.setText("ERR");
+                }
+                // Schedule the next tick only if the handler still exists
+                if (totpHandler != null) {
+                    totpHandler.postDelayed(this, 1000);
+                }
+            }
+        };
+        totpHandler.post(totpRunnable); // fire immediately, no initial delay
+    }
+
+    private void stopTotpUpdater() {
+        if (totpHandler != null && totpRunnable != null) {
+            totpHandler.removeCallbacks(totpRunnable);
+        }
+        totpHandler = null;
+        totpRunnable = null;
+    }
+
+    // -----------------------------------------------------------------------
 
     private void copyToClipboard(String label, String value) {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
