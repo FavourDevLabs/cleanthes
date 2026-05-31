@@ -18,183 +18,152 @@ public class VaultDao {
     }
 
     public long insert(VaultEntry entry) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        return db.insert(DatabaseHelper.TABLE_VAULT_ENTRIES, null, entryToContentValues(entry));
+        return dbHelper.getWritableDatabase()
+                .insert(DatabaseHelper.TABLE_VAULT_ENTRIES, null, toContentValues(entry));
     }
 
     public int update(VaultEntry entry) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        String[] whereArgs = { String.valueOf(entry.getId()) };
-        return db.update(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                entryToContentValues(entry),
+        return dbHelper.getWritableDatabase().update(
+                DatabaseHelper.TABLE_VAULT_ENTRIES,
+                toContentValues(entry),
                 DatabaseHelper.COLUMN_ID + " = ?",
-                whereArgs);
+                new String[]{ String.valueOf(entry.getId()) });
     }
 
     public int deleteById(long id) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        return db.delete(DatabaseHelper.TABLE_VAULT_ENTRIES,
+        return dbHelper.getWritableDatabase().delete(
+                DatabaseHelper.TABLE_VAULT_ENTRIES,
                 DatabaseHelper.COLUMN_ID + " = ?",
                 new String[]{ String.valueOf(id) });
     }
 
     public int deleteAll() {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        return db.delete(DatabaseHelper.TABLE_VAULT_ENTRIES, null, null);
+        return dbHelper.getWritableDatabase()
+                .delete(DatabaseHelper.TABLE_VAULT_ENTRIES, null, null);
     }
 
     public List<VaultEntry> getAllEntries() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        String orderBy = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
+        String order = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
                 + DatabaseHelper.COLUMN_TITLE + " ASC";
-        Cursor cursor = db.query(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                null, null, null, null, null, orderBy);
-        return cursorToList(cursor);
+        return cursorToList(dbHelper.getReadableDatabase()
+                .query(DatabaseHelper.TABLE_VAULT_ENTRIES, null, null, null, null, null, order));
     }
 
     public VaultEntry getEntryById(long id) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                null,
+        Cursor cursor = dbHelper.getReadableDatabase().query(
+                DatabaseHelper.TABLE_VAULT_ENTRIES, null,
                 DatabaseHelper.COLUMN_ID + " = ?",
                 new String[]{ String.valueOf(id) },
                 null, null, null);
         if (cursor == null) return null;
         try {
-            return cursor.moveToFirst() ? cursorToEntry(cursor) : null;
+            return cursor.moveToFirst() ? fromCursor(cursor) : null;
         } finally {
             cursor.close();
         }
     }
 
     public List<VaultEntry> searchEntries(String query) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        String likeQuery = "%" + query + "%";
-        String selection = DatabaseHelper.COLUMN_TITLE    + " LIKE ? OR "
-                         + DatabaseHelper.COLUMN_USERNAME + " LIKE ?";
-        String orderBy   = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
-                         + DatabaseHelper.COLUMN_TITLE + " ASC";
-        Cursor cursor = db.query(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                null, selection, new String[]{ likeQuery, likeQuery },
-                null, null, orderBy);
-        return cursorToList(cursor);
+        String like  = "%" + query + "%";
+        String where = DatabaseHelper.COLUMN_TITLE    + " LIKE ? OR "
+                     + DatabaseHelper.COLUMN_USERNAME + " LIKE ?";
+        String order = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
+                     + DatabaseHelper.COLUMN_TITLE + " ASC";
+        return cursorToList(dbHelper.getReadableDatabase()
+                .query(DatabaseHelper.TABLE_VAULT_ENTRIES, null,
+                        where, new String[]{ like, like }, null, null, order));
     }
 
     public List<VaultEntry> getEntriesByCategory(String category) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        String orderBy = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
-                       + DatabaseHelper.COLUMN_TITLE + " ASC";
-        Cursor cursor = db.query(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                null,
-                DatabaseHelper.COLUMN_CATEGORY + " = ?",
-                new String[]{ category },
-                null, null, orderBy);
-        return cursorToList(cursor);
+        String order = DatabaseHelper.COLUMN_IS_FAVORITE + " DESC, "
+                     + DatabaseHelper.COLUMN_TITLE + " ASC";
+        return cursorToList(dbHelper.getReadableDatabase()
+                .query(DatabaseHelper.TABLE_VAULT_ENTRIES, null,
+                        DatabaseHelper.COLUMN_CATEGORY + " = ?",
+                        new String[]{ category }, null, null, order));
     }
 
     public List<VaultEntry> getFavoriteEntries() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(DatabaseHelper.TABLE_VAULT_ENTRIES,
-                null,
-                DatabaseHelper.COLUMN_IS_FAVORITE + " = ?",
-                new String[]{ "1" },
-                null, null,
-                DatabaseHelper.COLUMN_TITLE + " ASC");
-        return cursorToList(cursor);
+        return cursorToList(dbHelper.getReadableDatabase()
+                .query(DatabaseHelper.TABLE_VAULT_ENTRIES, null,
+                        DatabaseHelper.COLUMN_IS_FAVORITE + " = ?",
+                        new String[]{ "1" }, null, null,
+                        DatabaseHelper.COLUMN_TITLE + " ASC"));
     }
 
     public int getEntryCount() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.rawQuery(
-                "SELECT COUNT(*) FROM " + DatabaseHelper.TABLE_VAULT_ENTRIES, null);
-        try {
-            return cursor.moveToFirst() ? cursor.getInt(0) : 0;
-        } finally {
-            cursor.close();
-        }
+        Cursor c = dbHelper.getReadableDatabase()
+                .rawQuery("SELECT COUNT(*) FROM " + DatabaseHelper.TABLE_VAULT_ENTRIES, null);
+        try { return c.moveToFirst() ? c.getInt(0) : 0; } finally { c.close(); }
     }
 
     public List<String> getAllCategories() {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        List<String> categories = new ArrayList<>();
-        Cursor cursor = db.rawQuery(
+        List<String> list = new ArrayList<>();
+        Cursor c = dbHelper.getReadableDatabase().rawQuery(
                 "SELECT DISTINCT " + DatabaseHelper.COLUMN_CATEGORY
                 + " FROM " + DatabaseHelper.TABLE_VAULT_ENTRIES
                 + " ORDER BY " + DatabaseHelper.COLUMN_CATEGORY + " ASC", null);
         try {
-            if (cursor.moveToFirst()) {
-                do { categories.add(cursor.getString(0)); }
-                while (cursor.moveToNext());
-            }
-        } finally {
-            cursor.close();
-        }
-        return categories;
+            if (c.moveToFirst()) do { list.add(c.getString(0)); } while (c.moveToNext());
+        } finally { c.close(); }
+        return list;
     }
 
-    // -----------------------------------------------------------------------
-    // Private helpers
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
-    private ContentValues entryToContentValues(VaultEntry entry) {
+    private ContentValues toContentValues(VaultEntry e) {
         ContentValues cv = new ContentValues();
-        cv.put(DatabaseHelper.COLUMN_TITLE,              entry.getTitle());
-        cv.put(DatabaseHelper.COLUMN_USERNAME,           entry.getUsername());
-        cv.put(DatabaseHelper.COLUMN_ENCRYPTED_PASSWORD, entry.getEncryptedPassword());
-        cv.put(DatabaseHelper.COLUMN_WEBSITE,            entry.getWebsite());
-        cv.put(DatabaseHelper.COLUMN_CATEGORY,           entry.getCategory());
-        cv.put(DatabaseHelper.COLUMN_NOTES,              entry.getNotes());
-        cv.put(DatabaseHelper.COLUMN_CREATED_AT,         entry.getCreatedAt());
-        cv.put(DatabaseHelper.COLUMN_UPDATED_AT,         entry.getUpdatedAt());
-        cv.put(DatabaseHelper.COLUMN_IS_FAVORITE,        entry.isFavorite() ? 1 : 0);
-        // TOTP — null is intentional for entries without TOTP configured
-        cv.put(DatabaseHelper.COLUMN_TOTP_SECRET, entry.getTotpSecret());
-        cv.put(DatabaseHelper.COLUMN_TOTP_ISSUER, entry.getTotpIssuer());
-        cv.put(DatabaseHelper.COLUMN_TOTP_DIGITS, entry.getTotpDigits());
-        cv.put(DatabaseHelper.COLUMN_TOTP_PERIOD, entry.getTotpPeriod());
+        cv.put(DatabaseHelper.COLUMN_TITLE,              e.getTitle());
+        cv.put(DatabaseHelper.COLUMN_USERNAME,           e.getUsername());
+        cv.put(DatabaseHelper.COLUMN_ENCRYPTED_PASSWORD, e.getEncryptedPassword());
+        cv.put(DatabaseHelper.COLUMN_WEBSITE,            e.getWebsite());
+        cv.put(DatabaseHelper.COLUMN_CATEGORY,           e.getCategory());
+        cv.put(DatabaseHelper.COLUMN_NOTES,              e.getNotes());
+        cv.put(DatabaseHelper.COLUMN_CREATED_AT,         e.getCreatedAt());
+        cv.put(DatabaseHelper.COLUMN_UPDATED_AT,         e.getUpdatedAt());
+        cv.put(DatabaseHelper.COLUMN_IS_FAVORITE,        e.isFavorite() ? 1 : 0);
+        cv.put(DatabaseHelper.COLUMN_TOTP_SECRET,        e.getTotpSecret());
+        cv.put(DatabaseHelper.COLUMN_TOTP_ISSUER,        e.getTotpIssuer());
+        cv.put(DatabaseHelper.COLUMN_TOTP_DIGITS,        e.getTotpDigits());
+        cv.put(DatabaseHelper.COLUMN_TOTP_PERIOD,        e.getTotpPeriod());
+        cv.put(DatabaseHelper.COLUMN_TOTP_ALGORITHM,     e.getTotpAlgorithm());
         return cv;
     }
 
-    private VaultEntry cursorToEntry(Cursor cursor) {
-        VaultEntry entry = new VaultEntry();
-        entry.setId(cursor.getLong(DatabaseHelper.IDX_ID));
-        entry.setTitle(cursor.getString(DatabaseHelper.IDX_TITLE));
-        entry.setUsername(cursor.getString(DatabaseHelper.IDX_USERNAME));
-        entry.setEncryptedPassword(cursor.getString(DatabaseHelper.IDX_ENCRYPTED_PASSWORD));
-        entry.setWebsite(cursor.getString(DatabaseHelper.IDX_WEBSITE));
-        entry.setCategory(cursor.getString(DatabaseHelper.IDX_CATEGORY));
-        entry.setNotes(cursor.getString(DatabaseHelper.IDX_NOTES));
-        entry.setCreatedAt(cursor.getLong(DatabaseHelper.IDX_CREATED_AT));
-        entry.setUpdatedAt(cursor.getLong(DatabaseHelper.IDX_UPDATED_AT));
-        entry.setFavorite(cursor.getInt(DatabaseHelper.IDX_IS_FAVORITE) == 1);
-        // Null guards required: existing rows have NULL in TOTP columns after migration.
-        // getString() on a NULL column returns null in Android — that's fine.
-        // But getInt() on a NULL column returns 0, which would corrupt our defaults.
-        if (!cursor.isNull(DatabaseHelper.IDX_TOTP_SECRET)) {
-            entry.setTotpSecret(cursor.getString(DatabaseHelper.IDX_TOTP_SECRET));
-        }
-        if (!cursor.isNull(DatabaseHelper.IDX_TOTP_ISSUER)) {
-            entry.setTotpIssuer(cursor.getString(DatabaseHelper.IDX_TOTP_ISSUER));
-        }
-        entry.setTotpDigits(cursor.isNull(DatabaseHelper.IDX_TOTP_DIGITS)
-                ? 6 : cursor.getInt(DatabaseHelper.IDX_TOTP_DIGITS));
-        entry.setTotpPeriod(cursor.isNull(DatabaseHelper.IDX_TOTP_PERIOD)
-                ? 30 : cursor.getInt(DatabaseHelper.IDX_TOTP_PERIOD));
-        return entry;
+    private VaultEntry fromCursor(Cursor c) {
+        VaultEntry e = new VaultEntry();
+        e.setId(c.getLong(DatabaseHelper.IDX_ID));
+        e.setTitle(c.getString(DatabaseHelper.IDX_TITLE));
+        e.setUsername(c.getString(DatabaseHelper.IDX_USERNAME));
+        e.setEncryptedPassword(c.getString(DatabaseHelper.IDX_ENCRYPTED_PASSWORD));
+        e.setWebsite(c.getString(DatabaseHelper.IDX_WEBSITE));
+        e.setCategory(c.getString(DatabaseHelper.IDX_CATEGORY));
+        e.setNotes(c.getString(DatabaseHelper.IDX_NOTES));
+        e.setCreatedAt(c.getLong(DatabaseHelper.IDX_CREATED_AT));
+        e.setUpdatedAt(c.getLong(DatabaseHelper.IDX_UPDATED_AT));
+        e.setFavorite(c.getInt(DatabaseHelper.IDX_IS_FAVORITE) == 1);
+
+        if (!c.isNull(DatabaseHelper.IDX_TOTP_SECRET))
+            e.setTotpSecret(c.getString(DatabaseHelper.IDX_TOTP_SECRET));
+        if (!c.isNull(DatabaseHelper.IDX_TOTP_ISSUER))
+            e.setTotpIssuer(c.getString(DatabaseHelper.IDX_TOTP_ISSUER));
+
+        e.setTotpDigits(c.isNull(DatabaseHelper.IDX_TOTP_DIGITS)
+                ? 6 : c.getInt(DatabaseHelper.IDX_TOTP_DIGITS));
+        e.setTotpPeriod(c.isNull(DatabaseHelper.IDX_TOTP_PERIOD)
+                ? 30 : c.getInt(DatabaseHelper.IDX_TOTP_PERIOD));
+        e.setTotpAlgorithm(c.isNull(DatabaseHelper.IDX_TOTP_ALGORITHM)
+                ? "SHA1" : c.getString(DatabaseHelper.IDX_TOTP_ALGORITHM));
+        return e;
     }
 
-    private List<VaultEntry> cursorToList(Cursor cursor) {
-        List<VaultEntry> entries = new ArrayList<>();
-        if (cursor == null) return entries;
+    private List<VaultEntry> cursorToList(Cursor c) {
+        List<VaultEntry> list = new ArrayList<>();
+        if (c == null) return list;
         try {
-            if (cursor.moveToFirst()) {
-                do { entries.add(cursorToEntry(cursor)); }
-                while (cursor.moveToNext());
-            }
-        } finally {
-            cursor.close();
-        }
-        return entries;
+            if (c.moveToFirst()) do { list.add(fromCursor(c)); } while (c.moveToNext());
+        } finally { c.close(); }
+        return list;
     }
 }
 

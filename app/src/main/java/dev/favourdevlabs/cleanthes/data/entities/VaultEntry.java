@@ -13,14 +13,12 @@ public class VaultEntry {
     private long updatedAt;
     private boolean isFavorite;
 
-    // TOTP fields — null totpSecret means this entry has no TOTP configured.
-    // totpSecret is AES-256-GCM encrypted before being stored, same as
-    // encryptedPassword.
-    // totpIssuer is plaintext (e.g. "GitHub") — not sensitive on its own.
+    // TOTP fields — null totpSecret = no TOTP on this entry
     private String totpSecret;
     private String totpIssuer;
-    private int totpDigits = 6; // 6 for virtually every real-world service
-    private int totpPeriod = 30; // 30 seconds — the RFC default
+    private int totpDigits = 6;
+    private int totpPeriod = 30;
+    private String totpAlgorithm = "SHA1"; // SHA1 | SHA256 | SHA512
 
     public VaultEntry() {
     }
@@ -36,13 +34,11 @@ public class VaultEntry {
         this.isFavorite = isFavorite;
     }
 
-    /** True when this entry has a TOTP secret configured. */
     public boolean hasTOTP() {
         return totpSecret != null && !totpSecret.isEmpty();
     }
 
-    // --- Getters ---
-
+    // Getters
     public long getId() {
         return id;
     }
@@ -99,8 +95,11 @@ public class VaultEntry {
         return totpPeriod;
     }
 
-    // --- Setters ---
+    public String getTotpAlgorithm() {
+        return totpAlgorithm;
+    }
 
+    // Setters
     public void setId(long id) {
         this.id = id;
     }
@@ -113,8 +112,8 @@ public class VaultEntry {
         this.username = username;
     }
 
-    public void setEncryptedPassword(String encryptedPassword) {
-        this.encryptedPassword = encryptedPassword;
+    public void setEncryptedPassword(String v) {
+        this.encryptedPassword = v;
     }
 
     public void setWebsite(String website) {
@@ -157,16 +156,12 @@ public class VaultEntry {
         this.totpPeriod = totpPeriod;
     }
 
+    public void setTotpAlgorithm(String totpAlgorithm) {
+        this.totpAlgorithm = totpAlgorithm != null ? totpAlgorithm : "SHA1";
+    }
+
     @Override
     public String toString() {
-        return "VaultEntry{"
-                + "id=" + id
-                + ", title='" + title + '\''
-                + ", username='" + username + '\''
-                + ", category='" + category + '\''
-                + ", isFavorite=" + isFavorite
-                + ", hasTOTP=" + hasTOTP()
-                + ", createdAt=" + createdAt
-                + '}';
+        return "VaultEntry{id=" + id + ", title='" + title + "', hasTOTP=" + hasTOTP() + "}";
     }
 }

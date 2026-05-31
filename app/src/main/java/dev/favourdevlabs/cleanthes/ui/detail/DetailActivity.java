@@ -31,95 +31,81 @@ public class DetailActivity extends AppCompatActivity {
 
     public static final String EXTRA_ENTRY_ID = "extra_entry_id";
 
-    // Existing views
-    private TextView tvToolbarTitle;
+    private TextView    tvToolbarTitle;
     private ImageButton btnBack;
-    private Button btnEdit;
-    private TextView tvCategory;
-    private TextView tvUsername;
-    private TextView tvPassword;
+    private Button      btnEdit;
+    private TextView    tvCategory;
+    private TextView    tvUsername;
+    private TextView    tvPassword;
     private ImageButton btnTogglePassword;
     private ImageButton btnCopyUsername;
     private ImageButton btnCopyPassword;
-    private TextView labelWebsite;
-    private TextView tvWebsite;
-    private TextView labelNotes;
-    private TextView tvNotes;
-    private TextView tvFavorite;
-
-    // TOTP views
-    private TextView labelTotp;
-    private View totpRow;
-    private TextView tvTotpCode;
+    private TextView    labelWebsite;
+    private TextView    tvWebsite;
+    private TextView    labelNotes;
+    private TextView    tvNotes;
+    private TextView    tvFavorite;
+    private TextView    labelTotp;
+    private View        totpRow;
+    private TextView    tvTotpCode;
     private ImageButton btnCopyTotp;
     private ProgressBar progressBarTotp;
 
-    // TOTP countdown — runs on the main thread via Handler
-    private Handler totpHandler;
+    private Handler  totpHandler;
     private Runnable totpRunnable;
 
     private VaultRepository repository;
-    private String plainPassword = "";
-    private boolean passwordVisible = false;
-    private long entryId = -1;
+    private String          plainPassword   = "";
+    private boolean         passwordVisible = false;
+    private long            entryId         = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
-
         repository = VaultRepository.getInstance(this);
         bindViews();
         attachListeners();
-
         entryId = getIntent().getLongExtra(EXTRA_ENTRY_ID, -1);
         if (entryId == -1 || !SessionManager.isUnlocked()) {
             Toast.makeText(this, "Session invalid", Toast.LENGTH_SHORT).show();
             finish();
-            return;
-        }
-
-        loadEntry(entryId);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        SessionManager.refreshSession();
-        if (entryId != -1 && SessionManager.isUnlocked()) {
+        } else {
             loadEntry(entryId);
         }
     }
 
-    @Override
-    protected void onPause() {
+    @Override protected void onResume() {
+        super.onResume();
+        SessionManager.refreshSession();
+        if (entryId != -1 && SessionManager.isUnlocked()) loadEntry(entryId);
+    }
+
+    @Override protected void onPause() {
         super.onPause();
-        // Remove pending callbacks — prevents Handler retaining Activity reference
         stopTotpUpdater();
     }
 
     private void bindViews() {
-        tvToolbarTitle = findViewById(R.id.detail_tv_toolbar_title);
-        btnBack = findViewById(R.id.detail_btn_back);
-        btnEdit = findViewById(R.id.detail_btn_edit);
-        tvCategory = findViewById(R.id.detail_tv_category);
-        tvUsername = findViewById(R.id.detail_tv_username);
-        tvPassword = findViewById(R.id.detail_tv_password);
+        tvToolbarTitle    = findViewById(R.id.detail_tv_toolbar_title);
+        btnBack           = findViewById(R.id.detail_btn_back);
+        btnEdit           = findViewById(R.id.detail_btn_edit);
+        tvCategory        = findViewById(R.id.detail_tv_category);
+        tvUsername        = findViewById(R.id.detail_tv_username);
+        tvPassword        = findViewById(R.id.detail_tv_password);
         btnTogglePassword = findViewById(R.id.detail_btn_toggle_password);
-        btnCopyUsername = findViewById(R.id.detail_btn_copy_username);
-        btnCopyPassword = findViewById(R.id.detail_btn_copy_password);
-        labelWebsite = findViewById(R.id.detail_label_website);
-        tvWebsite = findViewById(R.id.detail_tv_website);
-        labelNotes = findViewById(R.id.detail_label_notes);
-        tvNotes = findViewById(R.id.detail_tv_notes);
-        tvFavorite = findViewById(R.id.detail_tv_favorite);
-
-        // TOTP views
-        labelTotp = findViewById(R.id.detail_label_totp);
-        totpRow = findViewById(R.id.detail_totp_row);
-        tvTotpCode = findViewById(R.id.detail_tv_totp_code);
-        btnCopyTotp = findViewById(R.id.detail_btn_copy_totp);
-        progressBarTotp = findViewById(R.id.detail_totp_progress);
+        btnCopyUsername   = findViewById(R.id.detail_btn_copy_username);
+        btnCopyPassword   = findViewById(R.id.detail_btn_copy_password);
+        labelWebsite      = findViewById(R.id.detail_label_website);
+        tvWebsite         = findViewById(R.id.detail_tv_website);
+        labelNotes        = findViewById(R.id.detail_label_notes);
+        tvNotes           = findViewById(R.id.detail_tv_notes);
+        tvFavorite        = findViewById(R.id.detail_tv_favorite);
+        labelTotp         = findViewById(R.id.detail_label_totp);
+        totpRow           = findViewById(R.id.detail_totp_row);
+        tvTotpCode        = findViewById(R.id.detail_tv_totp_code);
+        btnCopyTotp       = findViewById(R.id.detail_btn_copy_totp);
+        progressBarTotp   = findViewById(R.id.detail_totp_progress);
 
         btnEdit.setBackgroundTintList(
                 ColorStateList.valueOf(ContextCompat.getColor(this, R.color.citadel_gold)));
@@ -127,40 +113,31 @@ public class DetailActivity extends AppCompatActivity {
 
     private void attachListeners() {
         btnBack.setOnClickListener(v -> finish());
-
         btnEdit.setOnClickListener(v -> {
-            Intent intent = new Intent(this, AddEditActivity.class);
-            intent.putExtra(AddEditActivity.EXTRA_ENTRY_ID, entryId);
-            startActivity(intent);
+            Intent i = new Intent(this, AddEditActivity.class);
+            i.putExtra(AddEditActivity.EXTRA_ENTRY_ID, entryId);
+            startActivity(i);
         });
-
         btnTogglePassword.setOnClickListener(v -> {
             passwordVisible = !passwordVisible;
             tvPassword.setText(passwordVisible ? plainPassword : "••••••••••••");
             btnTogglePassword.setImageResource(
                     passwordVisible ? R.drawable.ic_eye_on : R.drawable.ic_eye_off);
         });
-
-        btnCopyUsername.setOnClickListener(v -> copyToClipboard("username", tvUsername.getText().toString()));
-
-        btnCopyPassword.setOnClickListener(v -> copyToClipboard("password", plainPassword));
-
-        // Strip the display space before copying ("123 456" → "123456")
-        btnCopyTotp.setOnClickListener(v -> {
-            String raw = tvTotpCode.getText().toString().replace(" ", "");
-            copyToClipboard("totp", raw);
-        });
+        btnCopyUsername.setOnClickListener(v ->
+                copyToClipboard("username", tvUsername.getText().toString()));
+        btnCopyPassword.setOnClickListener(v ->
+                copyToClipboard("password", plainPassword));
+        btnCopyTotp.setOnClickListener(v ->
+                copyToClipboard("totp", tvTotpCode.getText().toString().replace(" ", "")));
     }
 
     private void loadEntry(long id) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 VaultEntry entry = repository.getEntryById(id, SessionManager.getSessionKey());
-                if (entry != null) {
-                    runOnUiThread(() -> populateUI(entry));
-                } else {
-                    runOnUiThread(this::finish);
-                }
+                if (entry != null) runOnUiThread(() -> populateUI(entry));
+                else               runOnUiThread(this::finish);
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Error loading entry", Toast.LENGTH_SHORT).show();
@@ -172,7 +149,7 @@ public class DetailActivity extends AppCompatActivity {
 
     private void populateUI(VaultEntry entry) {
         passwordVisible = false;
-        plainPassword = entry.getEncryptedPassword(); // already plaintext after decryptEntry
+        plainPassword   = entry.getEncryptedPassword();
 
         tvToolbarTitle.setText(entry.getTitle());
         tvCategory.setText(entry.getCategory());
@@ -183,87 +160,63 @@ public class DetailActivity extends AppCompatActivity {
         boolean hasWebsite = entry.getWebsite() != null && !entry.getWebsite().isEmpty();
         labelWebsite.setVisibility(hasWebsite ? View.VISIBLE : View.GONE);
         tvWebsite.setVisibility(hasWebsite ? View.VISIBLE : View.GONE);
-        if (hasWebsite)
-            tvWebsite.setText(entry.getWebsite());
+        if (hasWebsite) tvWebsite.setText(entry.getWebsite());
 
         boolean hasNotes = entry.getNotes() != null && !entry.getNotes().isEmpty();
         labelNotes.setVisibility(hasNotes ? View.VISIBLE : View.GONE);
         tvNotes.setVisibility(hasNotes ? View.VISIBLE : View.GONE);
-        if (hasNotes)
-            tvNotes.setText(entry.getNotes());
+        if (hasNotes) tvNotes.setText(entry.getNotes());
 
         tvFavorite.setVisibility(entry.isFavorite() ? View.VISIBLE : View.GONE);
 
-        // TOTP section
         boolean hasTOTP = entry.hasTOTP();
         labelTotp.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
         totpRow.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
         progressBarTotp.setVisibility(hasTOTP ? View.VISIBLE : View.GONE);
 
-        if (hasTOTP) {
-            startTotpUpdater(entry);
-        } else {
-            stopTotpUpdater();
-        }
+        if (hasTOTP) startTotpUpdater(entry);
+        else         stopTotpUpdater();
     }
 
-    // -----------------------------------------------------------------------
-    // TOTP countdown
-    // -----------------------------------------------------------------------
-
-    /**
-     * Starts a 1-second tick loop that regenerates the TOTP code and updates
-     * the countdown bar. The code itself only changes every 30s (or per period),
-     * but the bar needs to shrink every second — so we tick every second.
-     */
     private void startTotpUpdater(VaultEntry entry) {
-        stopTotpUpdater(); // clear any previous runnable first
-        totpHandler = new Handler(Looper.getMainLooper());
+        stopTotpUpdater();
+        totpHandler  = new Handler(Looper.getMainLooper());
         totpRunnable = new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
                 try {
                     String code = TOTPGenerator.generate(
                             entry.getTotpSecret(),
                             entry.getTotpDigits(),
-                            entry.getTotpPeriod());
+                            entry.getTotpPeriod(),
+                            entry.getTotpAlgorithm()); // now passes the actual algorithm
 
-                    // Split "123456" into "123 456" — much easier to read at a glance
                     String display = (code.length() == 6)
-                            ? code.substring(0, 3) + " " + code.substring(3)
-                            : code;
+                            ? code.substring(0, 3) + " " + code.substring(3) : code;
 
                     int secsLeft = TOTPGenerator.getSecondsRemaining(entry.getTotpPeriod());
-
                     tvTotpCode.setText(display);
                     progressBarTotp.setMax(entry.getTotpPeriod());
                     progressBarTotp.setProgress(secsLeft);
-
                 } catch (Exception e) {
                     tvTotpCode.setText("ERR");
                 }
-                // Schedule the next tick only if the handler still exists
-                if (totpHandler != null) {
-                    totpHandler.postDelayed(this, 1000);
-                }
+                if (totpHandler != null) totpHandler.postDelayed(this, 1000);
             }
         };
-        totpHandler.post(totpRunnable); // fire immediately, no initial delay
+        totpHandler.post(totpRunnable);
     }
 
     private void stopTotpUpdater() {
-        if (totpHandler != null && totpRunnable != null) {
+        if (totpHandler != null && totpRunnable != null)
             totpHandler.removeCallbacks(totpRunnable);
-        }
-        totpHandler = null;
+        totpHandler  = null;
         totpRunnable = null;
     }
 
-    // -----------------------------------------------------------------------
-
     private void copyToClipboard(String label, String value) {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, value));
+        ((ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE))
+                .setPrimaryClip(ClipData.newPlainText(label, value));
         Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show();
     }
 }
+

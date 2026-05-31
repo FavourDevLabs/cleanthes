@@ -7,8 +7,10 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.autofill.AutofillManager;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
 import dev.favourdevlabs.cleanthes.R;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -17,23 +19,21 @@ public class SettingsActivity extends AppCompatActivity {
     public static final String KEY_AUTO_LOCK = "auto_lock_minutes";
     public static final String KEY_CLIPBOARD = "clipboard_clear_seconds";
 
-    private SharedPreferences prefs;
-    private AutofillManager autofillManager;
-
-    // Auto-lock options in minutes. -1 means never.
-    private static final int[] LOCK_VALUES = { 1, 5, 15, -1 };
+    private static final int[]    LOCK_VALUES = { 1, 5, 15, -1 };
     private static final String[] LOCK_LABELS = { "1 min", "5 min", "15 min", "Never" };
 
-    // Clipboard options in seconds. -1 means off.
-    private static final int[] CLIP_VALUES = { 30, 60, -1 };
+    private static final int[]    CLIP_VALUES = { 30, 60, -1 };
     private static final String[] CLIP_LABELS = { "30s", "60s", "Off" };
+
+    private SharedPreferences prefs;
+    private AutofillManager   autofillManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs          = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         autofillManager = getSystemService(AutofillManager.class);
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
@@ -41,50 +41,44 @@ public class SettingsActivity extends AppCompatActivity {
         bindAutoLock();
         bindClipboard();
         bindAutofill();
+        bindVersion();
+        bindLicenses();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh autofill status — user may have just returned
-        // from Android's system autofill settings screen
-        bindAutofill();
+        bindAutofill(); // refresh status after returning from system settings
     }
+
+    // -------------------------------------------------------------------------
 
     private void bindAutoLock() {
         TextView valueView = findViewById(R.id.value_auto_lock);
+        valueView.setText(labelForLock(prefs.getInt(KEY_AUTO_LOCK, 5)));
 
-        int current = prefs.getInt(KEY_AUTO_LOCK, 5);
-        valueView.setText(labelForLock(current));
-
-        findViewById(R.id.row_auto_lock).setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                    .setTitle("Auto-lock after")
-                    .setItems(LOCK_LABELS, (dialog, which) -> {
-                        int chosen = LOCK_VALUES[which];
-                        prefs.edit().putInt(KEY_AUTO_LOCK, chosen).apply();
-                        valueView.setText(LOCK_LABELS[which]);
-                    })
-                    .show();
-        });
+        findViewById(R.id.row_auto_lock).setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Auto-lock after")
+                        .setItems(LOCK_LABELS, (dialog, which) -> {
+                            prefs.edit().putInt(KEY_AUTO_LOCK, LOCK_VALUES[which]).apply();
+                            valueView.setText(LOCK_LABELS[which]);
+                        })
+                        .show());
     }
 
     private void bindClipboard() {
         TextView valueView = findViewById(R.id.value_clipboard);
+        valueView.setText(labelForClip(prefs.getInt(KEY_CLIPBOARD, 30)));
 
-        int current = prefs.getInt(KEY_CLIPBOARD, 30);
-        valueView.setText(labelForClip(current));
-
-        findViewById(R.id.row_clipboard).setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                    .setTitle("Clear clipboard after")
-                    .setItems(CLIP_LABELS, (dialog, which) -> {
-                        int chosen = CLIP_VALUES[which];
-                        prefs.edit().putInt(KEY_CLIPBOARD, chosen).apply();
-                        valueView.setText(CLIP_LABELS[which]);
-                    })
-                    .show();
-        });
+        findViewById(R.id.row_clipboard).setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Clear clipboard after")
+                        .setItems(CLIP_LABELS, (dialog, which) -> {
+                            prefs.edit().putInt(KEY_CLIPBOARD, CLIP_VALUES[which]).apply();
+                            valueView.setText(CLIP_LABELS[which]);
+                        })
+                        .show());
     }
 
     private void bindAutofill() {
@@ -94,7 +88,6 @@ public class SettingsActivity extends AppCompatActivity {
         if (active) {
             statusView.setText("Active ✓");
             statusView.setTextColor(getColor(R.color.cleanthes_success));
-            // Row is not tappable when already active
             findViewById(R.id.row_autofill).setOnClickListener(null);
         } else {
             statusView.setText("Enable ›");
@@ -107,15 +100,42 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
+    private void bindVersion() {
+        TextView versionView = findViewById(R.id.value_version);
+        try {
+            String versionName = getPackageManager()
+                    .getPackageInfo(getPackageName(), 0).versionName;
+            versionView.setText(versionName);
+        } catch (Exception e) {
+            versionView.setText("1.0.0");
+        }
+    }
+
+    private void bindLicenses() {
+        findViewById(R.id.row_licenses).setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Open-source libraries")
+                        .setMessage(
+                                "ZXing Android Embedded\n"
+                              + "Apache 2.0 License\n\n"
+                              + "AndroidX Biometric\n"
+                              + "Apache 2.0 License\n\n"
+                              + "AndroidX Security Crypto\n"
+                              + "Apache 2.0 License\n\n"
+                              + "Google Material Components\n"
+                              + "Apache 2.0 License")
+                        .setPositiveButton("Close", null)
+                        .show());
+    }
+
+    // -------------------------------------------------------------------------
+
     private String labelForLock(int minutes) {
-        if (minutes == -1)
-            return "Never";
-        return minutes + " min";
+        return minutes == -1 ? "Never" : minutes + " min";
     }
 
     private String labelForClip(int seconds) {
-        if (seconds == -1)
-            return "Off";
-        return seconds + "s";
+        return seconds == -1 ? "Off" : seconds + "s";
     }
 }
+

@@ -17,8 +17,8 @@ public class VaultRepository {
 
     public static synchronized VaultRepository getInstance(Context context) {
         if (instance == null) {
-            DatabaseHelper dbHelper = DatabaseHelper.getInstance(context.getApplicationContext());
-            instance = new VaultRepository(new VaultDao(dbHelper));
+            instance = new VaultRepository(
+                    new VaultDao(DatabaseHelper.getInstance(context.getApplicationContext())));
         }
         return instance;
     }
@@ -27,64 +27,54 @@ public class VaultRepository {
         this.vaultDao = vaultDao;
     }
 
-    // -----------------------------------------------------------------------
-    // Write operations
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Write
+    // -------------------------------------------------------------------------
 
-    /** Original signature — no TOTP. Delegates to the full overload. */
+    /** No TOTP — backward-compatible overload. */
     public long addEntry(String title, String userName, String plainPassword,
             String website, String category, String notes,
-            boolean isFavorite, SecretKey secretKey) throws Exception {
+            boolean isFavorite, SecretKey key) throws Exception {
         return addEntry(title, userName, plainPassword, website, category, notes,
-                isFavorite, null, null, 6, 30, secretKey);
+                isFavorite, null, null, 6, 30, "SHA1", key);
     }
 
-    /** Full signature — includes TOTP. All TOTP params are nullable. */
+    /** Full overload — includes all TOTP fields. All TOTP params nullable. */
     public long addEntry(String title, String userName, String plainPassword,
             String website, String category, String notes, boolean isFavorite,
             String plainTotpSecret, String totpIssuer,
-            int totpDigits, int totpPeriod,
-            SecretKey secretKey) throws Exception {
+            int totpDigits, int totpPeriod, String totpAlgorithm,
+            SecretKey key) throws Exception {
 
-        String encryptedPassword = CryptoManager.encrypt(plainPassword, secretKey);
-        String encryptedTotp = (plainTotpSecret != null && !plainTotpSecret.isEmpty())
-                ? CryptoManager.encrypt(plainTotpSecret, secretKey)
+        String encPwd = CryptoManager.encrypt(plainPassword, key);
+        String encTotp = (plainTotpSecret != null && !plainTotpSecret.isEmpty())
+                ? CryptoManager.encrypt(plainTotpSecret, key)
                 : null;
 
         long now = System.currentTimeMillis();
-        VaultEntry entry = new VaultEntry(title, userName, encryptedPassword,
+        VaultEntry entry = new VaultEntry(title, userName, encPwd,
                 website, category, notes, isFavorite);
         entry.setCreatedAt(now);
         entry.setUpdatedAt(now);
-        entry.setTotpSecret(encryptedTotp);
+        entry.setTotpSecret(encTotp);
         entry.setTotpIssuer(totpIssuer);
         entry.setTotpDigits(totpDigits);
         entry.setTotpPeriod(totpPeriod);
+        entry.setTotpAlgorithm(totpAlgorithm != null ? totpAlgorithm : "SHA1");
 
-        long newId = vaultDao.insert(entry);
-        if (newId != -1)
-            entry.setId(newId);
-        return newId;
+        long id = vaultDao.insert(entry);
+        if (id != -1)
+            entry.setId(id);
+        return id;
     }
 
-    /**
-     * Update an existing entry.
-     *
-     * IMPORTANT: by the time this is called, entry.getTotpSecret() holds PLAINTEXT
-     * —
-     * decryptEntry() already decrypted it on load, and the form may have changed
-     * it.
-     * We encrypt it here before writing back to the DB.
-     */
-    public int updateEntry(VaultEntry entry, String plainPassword, SecretKey secretKey) throws Exception {
-        entry.setEncryptedPassword(CryptoManager.encrypt(plainPassword, secretKey));
-
+    public int updateEntry(VaultEntry entry, String plainPassword, SecretKey key) throws Exception {
+        entry.setEncryptedPassword(CryptoManager.encrypt(plainPassword, key));
         if (entry.getTotpSecret() != null && !entry.getTotpSecret().isEmpty()) {
-            entry.setTotpSecret(CryptoManager.encrypt(entry.getTotpSecret(), secretKey));
+            entry.setTotpSecret(CryptoManager.encrypt(entry.getTotpSecret(), key));
         } else {
             entry.setTotpSecret(null);
         }
-
         entry.setUpdatedAt(System.currentTimeMillis());
         return vaultDao.update(entry);
     }
@@ -97,31 +87,29 @@ public class VaultRepository {
         return vaultDao.deleteAll();
     }
 
-    // -----------------------------------------------------------------------
-    // Read operations
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Read
+    // -------------------------------------------------------------------------
 
-    public List<VaultEntry> getAllEntries(SecretKey secretKey) throws Exception {
-        return decryptEntries(vaultDao.getAllEntries(), secretKey);
+    public List<VaultEntry> getAllEntries(SecretKey key) throws Exception {
+        return decryptAll(vaultDao.getAllEntries(), key);
     }
 
-    public VaultEntry getEntryById(long id, SecretKey secretKey) throws Exception {
-        VaultEntry entry = vaultDao.getEntryById(id);
-        if (entry == null)
-            return null;
-        return decryptEntry(entry, secretKey);
+    public VaultEntry getEntryById(long id, SecretKey key) throws Exception {
+        VaultEntry e = vaultDao.getEntryById(id);
+        return e == null ? null : decrypt(e, key);
     }
 
-    public List<VaultEntry> searchEntries(String query, SecretKey secretKey) throws Exception {
-        return decryptEntries(vaultDao.searchEntries(query), secretKey);
+    public List<VaultEntry> searchEntries(String query, SecretKey key) throws Exception {
+        return decryptAll(vaultDao.searchEntries(query), key);
     }
 
-    public List<VaultEntry> getEntriesByCategory(String category, SecretKey secretKey) throws Exception {
-        return decryptEntries(vaultDao.getEntriesByCategory(category), secretKey);
+    public List<VaultEntry> getEntriesByCategory(String cat, SecretKey key) throws Exception {
+        return decryptAll(vaultDao.getEntriesByCategory(cat), key);
     }
 
-    public List<VaultEntry> getFavoriteEntries(SecretKey secretKey) throws Exception {
-        return decryptEntries(vaultDao.getFavoriteEntries(), secretKey);
+    public List<VaultEntry> getFavoriteEntries(SecretKey key) throws Exception {
+        return decryptAll(vaultDao.getFavoriteEntries(), key);
     }
 
     public List<String> getAllCategories() {
@@ -132,25 +120,19 @@ public class VaultRepository {
         return vaultDao.getEntryCount();
     }
 
-    // -----------------------------------------------------------------------
-    // Private helpers
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
-    private VaultEntry decryptEntry(VaultEntry entry, SecretKey secretKey) throws Exception {
-        entry.setEncryptedPassword(
-                CryptoManager.decrypt(entry.getEncryptedPassword(), secretKey));
-        // Only decrypt TOTP secret when one is actually stored
-        if (entry.getTotpSecret() != null && !entry.getTotpSecret().isEmpty()) {
-            entry.setTotpSecret(
-                    CryptoManager.decrypt(entry.getTotpSecret(), secretKey));
+    private VaultEntry decrypt(VaultEntry e, SecretKey key) throws Exception {
+        e.setEncryptedPassword(CryptoManager.decrypt(e.getEncryptedPassword(), key));
+        if (e.getTotpSecret() != null && !e.getTotpSecret().isEmpty()) {
+            e.setTotpSecret(CryptoManager.decrypt(e.getTotpSecret(), key));
         }
-        return entry;
+        return e;
     }
 
-    private List<VaultEntry> decryptEntries(List<VaultEntry> entries,
-            SecretKey secretKey) throws Exception {
-        for (VaultEntry entry : entries)
-            decryptEntry(entry, secretKey);
-        return entries;
+    private List<VaultEntry> decryptAll(List<VaultEntry> list, SecretKey key) throws Exception {
+        for (VaultEntry e : list)
+            decrypt(e, key);
+        return list;
     }
 }

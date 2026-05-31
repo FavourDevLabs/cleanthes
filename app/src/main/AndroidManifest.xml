@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!--
+        required="false" — devices without a camera (some tablets) can still
+        install the app. QR scanning just won't be available on them.
+    -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".utils.CleanthesApplication"
@@ -49,20 +57,6 @@
             android:windowSoftInputMode="adjustPan"
             android:screenOrientation="portrait" />
 
-        <service
-            android:name=".autofill.CleanthesAutofillService"
-            android:label="Cleanthes"
-            android:permission="android.permission.BIND_AUTOFILL_SERVICE"
-            android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.service.autofill.AutofillService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.autofill"
-                android:resource="@xml/autofill_service_config" />
-        </service>
-
         <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
@@ -72,6 +66,29 @@
             android:theme="@style/Theme.Cleanthes.Transparent"
             android:exported="false" />
 
+        <!--
+            ZXing's scanner activity, bundled inside the library.
+            tools:replace overrides ZXing's own manifest declaration which sets
+            screenOrientation="sensorLandscape" — we lock it to portrait.
+        -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            tools:replace="android:screenOrientation" />
+
+        <service
+            android:name=".autofill.CleanthesAutofillService"
+            android:label="Cleanthes"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service_config" />
+        </service>
 
     </application>
 </manifest>

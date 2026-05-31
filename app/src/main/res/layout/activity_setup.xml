@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-activity_setup.xml
-Shown exactly ONCE on first launch.
+    activity_setup.xml — Shown exactly ONCE on first launch.
 
-STOIC DESIGN NOTES:
-- "Your Inner Citadel"    → Marcus Aurelius. The mind as inviolable fortress.
-- "memento mori" divider  → Remember death. Password loss is permanent.
-- Checkbox acknowledgment → Consent with intention, not ignorance.
-- "FORTIFY"               → Build strength. Not just lock a door.
-- FLAG_SECURE             → No screenshots. No recents preview. Non-negotiable.
+    STOIC DESIGN NOTES:
+    - "Your Inner Citadel"    → Marcus Aurelius. The mind as inviolable fortress.
+    - "memento mori" divider  → Remember death. Password loss is permanent.
+    - Checkbox acknowledgment → Consent with intention, not ignorance.
+    - "FORTIFY"               → Build strength. Not just lock a door.
 -->
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -27,7 +25,6 @@ STOIC DESIGN NOTES:
         android:paddingTop="56dp"
         android:paddingBottom="40dp">
 
-        <!-- ── LOCK ICON ───────────────────────────────────────── -->
         <ImageView
             android:id="@+id/setup_icon_lock"
             android:layout_width="52dp"
@@ -39,7 +36,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── APP NAME ─────────────────────────────────────────── -->
         <TextView
             android:id="@+id/setup_tv_app_name"
             android:layout_width="wrap_content"
@@ -55,7 +51,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── SUBTITLE ─────────────────────────────────────────── -->
         <TextView
             android:id="@+id/setup_tv_title"
             android:layout_width="wrap_content"
@@ -69,11 +64,7 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── MEMENTO MORI DIVIDER ─────────────────────────────── -->
-        <!--
-            Two thin lines flanking the latin text.
-            Positioned as a philosophical section break, not decoration.
-        -->
+        <!-- memento mori divider -->
         <LinearLayout
             android:id="@+id/setup_divider_memento"
             android:layout_width="0dp"
@@ -106,15 +97,9 @@ STOIC DESIGN NOTES:
                 android:layout_height="1dp"
                 android:layout_weight="1"
                 android:background="@color/cleanthes_border" />
-
         </LinearLayout>
 
-        <!-- ── WARNING CARD ─────────────────────────────────────── -->
-        <!--
-            Orange border retained — signals urgency without red alarm.
-            Checkbox at bottom: forces conscious acknowledgment.
-            A user who taps without reading still made a deliberate gesture.
-        -->
+        <!-- Warning card -->
         <LinearLayout
             android:id="@+id/setup_card_warning"
             android:layout_width="0dp"
@@ -145,7 +130,6 @@ STOIC DESIGN NOTES:
                 android:lineSpacingExtra="4dp"
                 android:layout_marginTop="8dp" />
 
-            <!-- Thin separator before the checkbox -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -153,7 +137,6 @@ STOIC DESIGN NOTES:
                 android:layout_marginTop="14dp"
                 android:layout_marginBottom="10dp" />
 
-            <!-- Acknowledgment — FORTIFY button is dead until this is checked -->
             <CheckBox
                 android:id="@+id/setup_cb_acknowledge"
                 android:layout_width="match_parent"
@@ -163,10 +146,9 @@ STOIC DESIGN NOTES:
                 android:textSize="13sp"
                 android:buttonTint="@color/cleanthes_warning"
                 android:lineSpacingExtra="2dp" />
-
         </LinearLayout>
 
-        <!-- ── MASTER PASSWORD LABEL ────────────────────────────── -->
+        <!-- Master password label -->
         <TextView
             android:id="@+id/setup_label_password"
             android:layout_width="0dp"
@@ -181,7 +163,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── MASTER PASSWORD INPUT ────────────────────────────── -->
         <FrameLayout
             android:id="@+id/setup_container_password"
             android:layout_width="0dp"
@@ -221,7 +202,7 @@ STOIC DESIGN NOTES:
                 android:padding="12dp" />
         </FrameLayout>
 
-        <!-- ── STRENGTH BAR ─────────────────────────────────────── -->
+        <!-- Strength bar -->
         <LinearLayout
             android:id="@+id/setup_strength_bar"
             android:layout_width="0dp"
@@ -232,34 +213,23 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <View android:id="@+id/setup_strength_seg1"
-                android:layout_width="0dp" android:layout_height="4dp"
-                android:layout_weight="1"
-                android:background="@color/cleanthes_strength_empty"
-                android:layout_marginEnd="3dp" />
-            <View android:id="@+id/setup_strength_seg2"
-                android:layout_width="0dp" android:layout_height="4dp"
-                android:layout_weight="1"
-                android:background="@color/cleanthes_strength_empty"
-                android:layout_marginEnd="3dp" />
-            <View android:id="@+id/setup_strength_seg3"
-                android:layout_width="0dp" android:layout_height="4dp"
-                android:layout_weight="1"
-                android:background="@color/cleanthes_strength_empty"
-                android:layout_marginEnd="3dp" />
-            <View android:id="@+id/setup_strength_seg4"
-                android:layout_width="0dp" android:layout_height="4dp"
-                android:layout_weight="1"
-                android:background="@color/cleanthes_strength_empty"
-                android:layout_marginEnd="3dp" />
-            <View android:id="@+id/setup_strength_seg5"
-                android:layout_width="0dp" android:layout_height="4dp"
-                android:layout_weight="1"
+            <View android:id="@+id/setup_strength_seg1" android:layout_width="0dp"
+                android:layout_height="4dp" android:layout_weight="1"
+                android:background="@color/cleanthes_strength_empty" android:layout_marginEnd="3dp" />
+            <View android:id="@+id/setup_strength_seg2" android:layout_width="0dp"
+                android:layout_height="4dp" android:layout_weight="1"
+                android:background="@color/cleanthes_strength_empty" android:layout_marginEnd="3dp" />
+            <View android:id="@+id/setup_strength_seg3" android:layout_width="0dp"
+                android:layout_height="4dp" android:layout_weight="1"
+                android:background="@color/cleanthes_strength_empty" android:layout_marginEnd="3dp" />
+            <View android:id="@+id/setup_strength_seg4" android:layout_width="0dp"
+                android:layout_height="4dp" android:layout_weight="1"
+                android:background="@color/cleanthes_strength_empty" android:layout_marginEnd="3dp" />
+            <View android:id="@+id/setup_strength_seg5" android:layout_width="0dp"
+                android:layout_height="4dp" android:layout_weight="1"
                 android:background="@color/cleanthes_strength_empty" />
-
         </LinearLayout>
 
-        <!-- Strength label: "Extremely Vulnerable" → "Impenetrable" -->
         <TextView
             android:id="@+id/setup_tv_strength_label"
             android:layout_width="0dp"
@@ -272,7 +242,7 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── CONFIRM PASSWORD LABEL ───────────────────────────── -->
+        <!-- Confirm password label -->
         <TextView
             android:id="@+id/setup_label_confirm"
             android:layout_width="0dp"
@@ -287,7 +257,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── CONFIRM PASSWORD INPUT ───────────────────────────── -->
         <FrameLayout
             android:id="@+id/setup_container_confirm"
             android:layout_width="0dp"
@@ -327,7 +296,6 @@ STOIC DESIGN NOTES:
                 android:padding="12dp" />
         </FrameLayout>
 
-        <!-- Match indicator -->
         <TextView
             android:id="@+id/setup_tv_match_indicator"
             android:layout_width="0dp"
@@ -339,7 +307,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── ERROR MESSAGE ─────────────────────────────────────── -->
         <TextView
             android:id="@+id/setup_tv_error"
             android:layout_width="0dp"
@@ -353,13 +320,7 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── FORTIFY BUTTON ────────────────────────────────────── -->
-        <!--
-            Gold. Disabled until checkbox is checked.
-            Alpha and enabled state managed entirely from SetupActivity.
-            backgroundTint is forced programmatically to prevent Material
-            Button from overriding gold with its internal disabled gray.
-        -->
+        <!-- FORTIFY — gold, disabled until checkbox is checked -->
         <Button
             android:id="@+id/setup_btn_create"
             android:layout_width="0dp"
@@ -375,7 +336,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── PROGRESS BAR ──────────────────────────────────────── -->
         <ProgressBar
             android:id="@+id/setup_progress"
             android:layout_width="32dp"
@@ -387,20 +347,6 @@ STOIC DESIGN NOTES:
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ── BRAND FOOTER (pinned to screen bottom) ───────────── -->
-        <TextView
-            android:id="@+id/setup_tv_brand"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_brand"
-            android:textColor="@color/cleanthes_disabled"
-            android:textSize="10sp"
-            android:letterSpacing="0.25"
-            android:layout_marginBottom="20dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </ScrollView>
+

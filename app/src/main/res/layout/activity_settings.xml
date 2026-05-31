@@ -46,9 +46,10 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:orientation="vertical"
-			android:paddingTop="24dp">
+			android:paddingTop="24dp"
+			android:paddingBottom="40dp">
 
-			<!-- ─── VAULT ─────────────────────────────── -->
+			<!-- ─── VAULT ──────────────────────────────────── -->
 			<TextView
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
@@ -61,7 +62,6 @@
 				android:letterSpacing="0.15"
 				android:fontFamily="monospace" />
 
-			<!-- Auto-lock row -->
 			<LinearLayout
 				android:id="@+id/row_auto_lock"
 				android:layout_width="match_parent"
@@ -103,7 +103,6 @@
 				android:layout_marginStart="16dp"
 				android:background="@color/cleanthes_border" />
 
-			<!-- Clipboard row -->
 			<LinearLayout
 				android:id="@+id/row_clipboard"
 				android:layout_width="match_parent"
@@ -139,7 +138,7 @@
 					android:textSize="18sp" />
 			</LinearLayout>
 
-			<!-- ─── AUTOFILL ────────────────────────────── -->
+			<!-- ─── AUTOFILL ───────────────────────────────── -->
 			<TextView
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
@@ -178,6 +177,81 @@
 					android:textSize="15sp" />
 			</LinearLayout>
 
+			<!-- ─── ABOUT ────────────────────────────────────── -->
+			<TextView
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:paddingStart="16dp"
+				android:paddingEnd="16dp"
+				android:paddingTop="28dp"
+				android:paddingBottom="8dp"
+				android:text="ABOUT"
+				android:textColor="@color/cleanthes_accent"
+				android:textSize="11sp"
+				android:letterSpacing="0.15"
+				android:fontFamily="monospace" />
+
+			<!-- Version row — no chevron, not tappable -->
+			<LinearLayout
+				android:id="@+id/row_version"
+				android:layout_width="match_parent"
+				android:layout_height="56dp"
+				android:orientation="horizontal"
+				android:gravity="center_vertical"
+				android:paddingStart="16dp"
+				android:paddingEnd="16dp">
+
+				<TextView
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:text="Version"
+					android:textColor="@color/cleanthes_text_primary"
+					android:textSize="15sp" />
+
+				<TextView
+					android:id="@+id/value_version"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:textColor="@color/cleanthes_text_secondary"
+					android:textSize="15sp" />
+			</LinearLayout>
+
+			<View
+				android:layout_width="match_parent"
+				android:layout_height="1dp"
+				android:layout_marginStart="16dp"
+				android:background="@color/cleanthes_border" />
+
+			<!-- Open-source libraries row — tappable -->
+			<LinearLayout
+				android:id="@+id/row_licenses"
+				android:layout_width="match_parent"
+				android:layout_height="56dp"
+				android:orientation="horizontal"
+				android:gravity="center_vertical"
+				android:paddingStart="16dp"
+				android:paddingEnd="16dp"
+				android:background="?attr/selectableItemBackground">
+
+				<TextView
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:text="Open-source libraries"
+					android:textColor="@color/cleanthes_text_primary"
+					android:textSize="15sp" />
+
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginStart="4dp"
+					android:text="›"
+					android:textColor="@color/cleanthes_text_secondary"
+					android:textSize="18sp" />
+			</LinearLayout>
+
 		</LinearLayout>
 	</ScrollView>
 </LinearLayout>
+
