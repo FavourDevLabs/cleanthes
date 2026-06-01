@@ -13,9 +13,11 @@ import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.Intent;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity;
 import androidx.core.content.ContextCompat;
 
 import com.google.zxing.integration.android.IntentIntegrator;
@@ -28,10 +30,11 @@ import dev.favourdevlabs.cleanthes.security.OtpAuthParser;
 import dev.favourdevlabs.cleanthes.security.TOTPGenerator;
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager;
 import dev.favourdevlabs.cleanthes.utils.PasswordGenerator;
+import dev.favourdevlabs.cleanthes.ui.auth.LoginActivity;
 
 import javax.crypto.SecretKey;
 
-public class AddEditActivity extends AppCompatActivity {
+public class AddEditActivity extends AuthenticatedActivity {
 
     public static final String EXTRA_ENTRY_ID = "extra_entry_id";
     public static final long NO_ENTRY_ID = -1L;

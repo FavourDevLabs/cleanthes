@@ -11,6 +11,7 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -36,26 +37,24 @@ import dev.favourdevlabs.cleanthes.ui.settings.SettingsActivity;
 
 import java.util.List;
 
-public class HomeActivity extends AppCompatActivity
-        implements VaultEntryAdapter.OnEntryClickListener {
+public class HomeActivity extends AuthenticatedActivity implements VaultEntryAdapter.OnEntryClickListener {
 
     public static final String EXTRA_ENTRY_ID = "extra_entry_id";
 
-    private RecyclerView          recyclerView;
-    private VaultEntryAdapter     adapter;
-    private HomeViewModel         viewModel;
-    private SearchView            searchView;
-    private ChipGroup             chipGroup;
-    private View                  emptyState;
-    private TextView              tvEntryCount;
-    private ImageButton           btnSearch;
-    private ImageButton           btnLock;
-    private ImageButton           btnSettings;
-    private FloatingActionButton  fabAdd;
-    private View                  rootView;
+    private RecyclerView recyclerView;
+    private VaultEntryAdapter adapter;
+    private HomeViewModel viewModel;
+    private SearchView searchView;
+    private ChipGroup chipGroup;
+    private View emptyState;
+    private TextView tvEntryCount;
+    private ImageButton btnSearch;
+    private ImageButton btnLock;
+    private ImageButton btnSettings;
+    private FloatingActionButton fabAdd;
+    private View rootView;
 
-    private boolean searchVisible  = false;
-    private boolean isLaunchingChild = false;
+    private boolean searchVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,33 +68,23 @@ public class HomeActivity extends AppCompatActivity
 
     @Override
     protected void onResume() {
-        super.onResume();
-        if (!SessionManager.isUnlocked()) {
-            redirectToLogin();
-            return;
+        super.onResume(); // base handles session check + refresh
+        if (!isFinishing()) {
+            viewModel.loadEntries();
         }
-        SessionManager.refreshSession();
-        viewModel.loadEntries();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (!isLaunchingChild) SessionManager.clearSession();
-        isLaunchingChild = false;
     }
 
     private void bindViews() {
-        recyclerView  = findViewById(R.id.home_recycler_view);
-        searchView    = findViewById(R.id.home_search_view);
-        chipGroup     = findViewById(R.id.home_chip_group);
-        emptyState    = findViewById(R.id.home_empty_state);
-        tvEntryCount  = findViewById(R.id.home_tv_entry_count);
-        btnSearch     = findViewById(R.id.home_btn_search);
-        btnSettings   = findViewById(R.id.home_btn_settings);
-        btnLock       = findViewById(R.id.home_btn_lock);
-        fabAdd        = findViewById(R.id.home_fab_add);
-        rootView      = findViewById(android.R.id.content);
+        recyclerView = findViewById(R.id.home_recycler_view);
+        searchView = findViewById(R.id.home_search_view);
+        chipGroup = findViewById(R.id.home_chip_group);
+        emptyState = findViewById(R.id.home_empty_state);
+        tvEntryCount = findViewById(R.id.home_tv_entry_count);
+        btnSearch = findViewById(R.id.home_btn_search);
+        btnSettings = findViewById(R.id.home_btn_settings);
+        btnLock = findViewById(R.id.home_btn_lock);
+        fabAdd = findViewById(R.id.home_fab_add);
+        rootView = findViewById(android.R.id.content);
     }
 
     private void setupRecyclerView() {
@@ -113,8 +102,7 @@ public class HomeActivity extends AppCompatActivity
     }
 
     private void setupSwipeToDelete() {
-        ItemTouchHelper.SimpleCallback callback =
-                new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+        ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
 
             @Override
             public boolean onMove(@NonNull RecyclerView rv,
@@ -154,9 +142,9 @@ public class HomeActivity extends AppCompatActivity
              * Paints the delete affordance behind the swiping card.
              *
              * Draw order matters:
-             *   1. Red background  — painted onto the canvas first
-             *   2. Trash icon      — painted on top of the background
-             *   3. super           — draws the card on top, covering what hasn't slid away
+             * 1. Red background — painted onto the canvas first
+             * 2. Trash icon — painted on top of the background
+             * 3. super — draws the card on top, covering what hasn't slid away
              *
              * Result: red background and trash icon are only visible in the
              * region the card has already moved away from.
@@ -186,12 +174,12 @@ public class HomeActivity extends AppCompatActivity
                     Drawable icon = ContextCompat.getDrawable(
                             recyclerView.getContext(), R.drawable.ic_delete);
                     if (icon != null) {
-                        int iconSize   = dpToPx(22);
+                        int iconSize = dpToPx(22);
                         int iconMargin = (item.getHeight() - iconSize) / 2;
-                        int iconTop    = item.getTop()     + iconMargin;
-                        int iconBottom = item.getBottom()  - iconMargin;
-                        int iconRight  = item.getRight()   - iconMargin;
-                        int iconLeft   = iconRight         - iconSize;
+                        int iconTop = item.getTop() + iconMargin;
+                        int iconBottom = item.getBottom() - iconMargin;
+                        int iconRight = item.getRight() - iconMargin;
+                        int iconLeft = iconRight - iconSize;
 
                         icon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN);
                         icon.setBounds(iconLeft, iconTop, iconRight, iconBottom);
@@ -236,30 +224,34 @@ public class HomeActivity extends AppCompatActivity
             }
         });
 
-        viewModel.getIsLoading().observe(this, loading -> {});
+        viewModel.getIsLoading().observe(this, loading -> {
+        });
     }
 
     private void attachListeners() {
         fabAdd.setOnClickListener(v -> {
-            isLaunchingChild = true;
             startActivity(new Intent(this, AddEditActivity.class));
         });
 
         btnSearch.setOnClickListener(v -> toggleSearchBar());
 
         btnSettings.setOnClickListener(v -> {
-            isLaunchingChild = true;
             startActivity(new Intent(this, SettingsActivity.class));
         });
 
         btnLock.setOnClickListener(v -> lockVault());
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override public boolean onQueryTextSubmit(String query) {
-                viewModel.setSearchQuery(query); return true;
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                viewModel.setSearchQuery(query);
+                return true;
             }
-            @Override public boolean onQueryTextChange(String newText) {
-                viewModel.setSearchQuery(newText); return true;
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                viewModel.setSearchQuery(newText);
+                return true;
             }
         });
 
@@ -278,13 +270,16 @@ public class HomeActivity extends AppCompatActivity
         chipGroup.addView(allChip);
 
         if (categoryNames != null) {
-            for (String category : categoryNames) chipGroup.addView(createChip(category));
+            for (String category : categoryNames)
+                chipGroup.addView(createChip(category));
         }
 
         chipGroup.setOnCheckedStateChangeListener((group, checkIds) -> {
-            if (checkIds.isEmpty()) return;
+            if (checkIds.isEmpty())
+                return;
             Chip selected = group.findViewById(checkIds.get(0));
-            if (selected != null) viewModel.setCategory(selected.getText().toString());
+            if (selected != null)
+                viewModel.setCategory(selected.getText().toString());
         });
     }
 
@@ -318,15 +313,13 @@ public class HomeActivity extends AppCompatActivity
     public void onEntryClick(VaultEntry entry) {
         Intent intent = new Intent(this, DetailActivity.class);
         intent.putExtra(EXTRA_ENTRY_ID, entry.getId());
-        isLaunchingChild = true;
         startActivity(intent);
     }
 
     @Override
     public void onCopyClick(String password) {
-        android.content.ClipboardManager clipboard =
-                (android.content.ClipboardManager) getSystemService(
-                        android.content.Context.CLIPBOARD_SERVICE);
+        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(
+                android.content.Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(
                 android.content.ClipData.newPlainText("password", password));
         android.widget.Toast.makeText(this,
@@ -354,15 +347,7 @@ public class HomeActivity extends AppCompatActivity
         redirectToLogin();
     }
 
-    private void redirectToLogin() {
-        Intent intent = new Intent(this, LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
-    }
-
     private int dpToPx(int dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 }
-

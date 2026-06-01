@@ -36,11 +36,10 @@ public class CleanthesApplication extends Application {
 
         @Override
         public void onActivityCreated(Activity a, Bundle b) {
-            /*
-             * a.getWindow().setFlags(
-             * WindowManager.LayoutParams.FLAG_SECURE,
-             * WindowManager.LayoutParams.FLAG_SECURE);
-             */
+
+            a.getWindow().setFlags(
+                    WindowManager.LayoutParams.FLAG_SECURE,
+                    WindowManager.LayoutParams.FLAG_SECURE);
 
         }
 
