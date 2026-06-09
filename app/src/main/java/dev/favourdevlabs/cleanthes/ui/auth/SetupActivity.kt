@@ -1,73 +1,104 @@
 package dev.favourdevlabs.cleanthes.ui.auth
 
 import android.content.Intent
-import android.content.SharedPreferences
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64
-import android.view.View
-import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import dev.favourdevlabs.cleanthes.R
-import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import dev.favourdevlabs.cleanthes.ui.home.HomeActivity
+import dev.favourdevlabs.cleanthes.ui.theme.*
+import kotlinx.coroutines.launch
 
-class SetupActivity : AppCompatActivity() {
+class SetupActivity : ComponentActivity() {
 
-    companion object {
-        const val PREFS_NAME            = "vault_secure_prefs"
-        const val KEY_VAULT_EXISTS      = "vault_exists"
-        const val KEY_AUTH_SALT         = "auth_salt"
-        const val KEY_ENC_SALT          = "enc_salt"
-        const val KEY_MASTER_HASH       = "master_hash"
-        const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
-        const val KEY_BIOMETRIC_SECRET  = "biometric_secret"
-
-        const val MIN_PASSWORD_LENGTH  = 8
-        const val MAX_FAILED_ATTEMPTS  = 5
-
-        const val STRENGTH_VERY_WEAK   = 0
-        const val STRENGTH_WEAK        = 1
-        const val STRENGTH_FAIR        = 2
-        const val STRENGTH_STRONG      = 3
-        const val STRENGTH_VERY_STRONG = 4
-    }
-
-    private lateinit var etPassword:       EditText
-    private lateinit var etConfirm:        EditText
-    private lateinit var btnTogglePassword: ImageButton
-    private lateinit var btnToggleConfirm:  ImageButton
-    private lateinit var strengthSegments: Array<View>
-    private lateinit var tvStrengthLabel:  TextView
-    private lateinit var tvMatchIndicator: TextView
-    private lateinit var tvError:          TextView
-    private lateinit var btnCreate:        Button
-    private lateinit var btnProgressBar:   ProgressBar
-    private lateinit var cbAcknowledge:    CheckBox
-
-    private var passwordVisible = false
-    private var confirmVisible  = false
-
+    private val viewModel: SetupViewModel by viewModels()
     private val splashHandler = Handler(Looper.getMainLooper())
-    private var splashDone    = false
+
+    // mutableStateOf at Activity scope — Compose observes these directly
+    private var splashDone  by mutableStateOf(false)
+    private var showContent by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition { !splashDone }
         super.onCreate(savedInstanceState)
+
+        // Navigation events are Activity concerns — handle them here, not in a composable
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.navEvents.collect { event ->
+                    when (event) {
+                        SetupNavEvent.NavigateToHome -> {
+                            startActivity(
+                                Intent(this@SetupActivity, HomeActivity::class.java)
+                                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            )
+                            finish()
+                        }
+                    }
+                }
+            }
+        }
+
+        setContent {
+            CleanthesTheme {
+                AnimatedVisibility(
+                    visible = showContent,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    SetupScreen(viewModel = viewModel)
+                }
+            }
+        }
+
         splashHandler.postDelayed(::onSplashComplete, 2000)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        splashHandler.removeCallbacksAndMessages(null)
+    }
+
     private fun onSplashComplete() {
-        splashDone = true
         try {
             if (getEncryptedPrefs().getBoolean(KEY_VAULT_EXISTS, false)) {
+                splashDone = true
                 startActivity(
                     Intent(this, LoginActivity::class.java)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -77,222 +108,267 @@ class SetupActivity : AppCompatActivity() {
             }
         } catch (_: Exception) {}
 
-        setContentView(R.layout.activity_setup)
-        bindViews()
-        attachListeners()
+        showContent = true
+        splashDone  = true
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        splashHandler.removeCallbacksAndMessages(null)
-    }
+    // Routing-only — ViewModel owns the write path
+    private fun getEncryptedPrefs() = EncryptedSharedPreferences.create(
+        this,
+        PREFS_NAME,
+        MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+}
 
-    private fun bindViews() {
-        etPassword        = findViewById(R.id.setup_et_password)
-        etConfirm         = findViewById(R.id.setup_et_confirm)
-        btnTogglePassword = findViewById(R.id.setup_btn_toggle_password)
-        btnToggleConfirm  = findViewById(R.id.setup_btn_confirm)
-        tvStrengthLabel   = findViewById(R.id.setup_tv_strength_label)
-        tvMatchIndicator  = findViewById(R.id.setup_tv_match_indicator)
-        tvError           = findViewById(R.id.setup_tv_error)
-        btnCreate         = findViewById(R.id.setup_btn_create)
-        btnProgressBar    = findViewById(R.id.setup_progress)
-        cbAcknowledge     = findViewById(R.id.setup_cb_acknowledge)
+// ── Screen ────────────────────────────────────────────────────────────────────
 
-        btnCreate.isEnabled = false
-        btnCreate.alpha = 0.35f
-        btnCreate.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, R.color.citadel_gold)
-        )
+@Composable
+private fun SetupScreen(viewModel: SetupViewModel) {
+    val uiState      by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusManager = LocalFocusManager.current
 
-        strengthSegments = arrayOf(
-            findViewById(R.id.setup_strength_seg1),
-            findViewById(R.id.setup_strength_seg2),
-            findViewById(R.id.setup_strength_seg3),
-            findViewById(R.id.setup_strength_seg4),
-            findViewById(R.id.setup_strength_seg5)
-        )
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp)
+            .padding(top = 72.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
 
-    private fun attachListeners() {
-        etPassword.addTextChangedListener(simpleWatcher { updateStrengthBar(it); updateMatchIndicator(); hideError() })
-        etConfirm.addTextChangedListener(simpleWatcher { updateMatchIndicator(); hideError() })
-        btnTogglePassword.setOnClickListener {
-            passwordVisible = !passwordVisible
-            togglePasswordVisibility(etPassword, btnTogglePassword, passwordVisible)
-        }
-        btnToggleConfirm.setOnClickListener {
-            confirmVisible = !confirmVisible
-            togglePasswordVisibility(etConfirm, btnToggleConfirm, confirmVisible)
-        }
-        etConfirm.setOnEditorActionListener { _, _, _ -> attemptSetup(); true }
-        cbAcknowledge.setOnCheckedChangeListener { _, isChecked ->
-            btnCreate.isEnabled = isChecked
-            btnCreate.alpha = if (isChecked) 1.0f else 0.35f
-            btnCreate.backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.citadel_gold)
+        // ── Header ────────────────────────────────────────────────────────────
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = GoldPrimary,
+                modifier = Modifier.size(44.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Forge Your Citadel",
+                style = MaterialTheme.typography.headlineLarge,
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Your master password cannot be recovered.\nChoose with the gravity it deserves.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
             )
         }
-        btnCreate.setOnClickListener { attemptSetup() }
-    }
 
-    private fun attemptSetup() {
-        val password = etPassword.text.toString()
-        val confirm  = etConfirm.text.toString()
-
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            showError(getString(R.string.error_password_too_short)); return
-        }
-        if (!password.contains(Regex("\\d"))) {
-            showError(getString(R.string.error_password_no_number)); return
-        }
-        if (!password.contains(Regex("[!@#\$%^&*()_+\\-=\\[\\]{}|;':\",./<>?]"))) {
-            showError(getString(R.string.error_password_no_special)); return
-        }
-        if (password != confirm) {
-            showError(getString(R.string.error_passwords_no_match)); return
-        }
-
-        setLoadingState(true)
-        Thread { performSetup(password) }.start()
-    }
-
-    private fun performSetup(masterPassword: String) {
-        try {
-            val storedHash   = KeyDerivation.hashPassword(masterPassword.toCharArray())
-            val encSaltBytes = KeyDerivation.generateSalt()
-            val encSalt      = Base64.encodeToString(encSaltBytes, Base64.NO_WRAP)
-
-            getEncryptedPrefs().edit()
-                .putBoolean(KEY_VAULT_EXISTS,      true)
-                .putString(KEY_AUTH_SALT,          storedHash.saltBase64)
-                .putString(KEY_ENC_SALT,           encSalt)
-                .putString(KEY_MASTER_HASH,        storedHash.hashBase64)
-                .putBoolean(KEY_BIOMETRIC_ENABLED, true)
-                .putString(KEY_BIOMETRIC_SECRET,   masterPassword)
-                .apply()
-
-            runOnUiThread(::navigateHome)
-        } catch (_: Exception) {
-            runOnUiThread {
-                setLoadingState(false)
-                showError(getString(R.string.error_setup_failed))
+        // ── Password + strength ───────────────────────────────────────────────
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CleanthesPasswordField(
+                value = uiState.password,
+                onValueChange = viewModel::onPasswordChange,
+                label = "Master Password",
+                visible = uiState.passwordVisible,
+                onVisibilityToggle = viewModel::onPasswordVisibilityToggle,
+                imeAction = ImeAction.Next,
+                onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+            )
+            PasswordStrengthBar(score = uiState.strengthScore)
+            AnimatedVisibility(visible = uiState.password.isNotEmpty()) {
+                Text(
+                    text = strengthLabel(uiState.strengthScore),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = strengthColor(uiState.strengthScore),
+                )
             }
         }
-    }
 
-    private fun navigateHome() {
-        startActivity(
-            Intent(this, HomeActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        )
-        finish()
-    }
-
-    private fun updateStrengthBar(password: String) {
-        val score = computeStrengthScore(password)
-        val color = getStrengthColor(score)
-        val empty = ContextCompat.getColor(this, R.color.cleanthes_strength_empty)
-        strengthSegments.forEachIndexed { i, seg ->
-            seg.setBackgroundColor(if (i < score) color else empty)
+        // ── Confirm + match indicator ─────────────────────────────────────────
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CleanthesPasswordField(
+                value = uiState.confirm,
+                onValueChange = viewModel::onConfirmChange,
+                label = "Confirm Password",
+                visible = uiState.confirmVisible,
+                onVisibilityToggle = viewModel::onConfirmVisibilityToggle,
+                imeAction = ImeAction.Done,
+                onImeAction = { focusManager.clearFocus(); viewModel.attemptSetup() },
+            )
+            AnimatedVisibility(visible = uiState.matchState != SetupUiState.MatchState.EMPTY) {
+                val (text, color) = when (uiState.matchState) {
+                    SetupUiState.MatchState.MATCH    -> "✓ Passwords match"           to Success
+                    SetupUiState.MatchState.MISMATCH -> "✗ Passwords do not match"    to Danger
+                    SetupUiState.MatchState.EMPTY    -> ""                             to Color.Transparent
+                }
+                Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
+            }
         }
-        tvStrengthLabel.text = getStrengthLabel(score)
-        tvStrengthLabel.setTextColor(color)
-    }
 
-    private fun computeStrengthScore(password: String): Int {
-        if (password.isEmpty()) return 0
-        var score = 0
-        if (password.length >= MIN_PASSWORD_LENGTH)                      score++
-        if (password.contains(Regex("[A-Z]")))                           score++
-        if (password.contains(Regex("\\d")))                             score++
-        if (password.contains(Regex("[!@#\$%^&*()_+\\-=\\[\\]{}|]")))  score++
-        if (password.length >= 16)                                        score++
-        return score
-    }
-
-    private fun getStrengthColor(score: Int): Int {
-        val res = when (score) {
-            1    -> R.color.cleanthes_strength_very_weak
-            2    -> R.color.cleanthes_strength_weak
-            3    -> R.color.cleanthes_strength_fair
-            4    -> R.color.cleanthes_strength_strong
-            5    -> R.color.cleanthes_strength_very_strong
-            else -> R.color.cleanthes_strength_empty
+        // ── Inline error ──────────────────────────────────────────────────────
+        AnimatedVisibility(visible = uiState.errorMessage != null) {
+            uiState.errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
-        return ContextCompat.getColor(this, res)
-    }
 
-    private fun getStrengthLabel(score: Int): String = when (score) {
-        1    -> getString(R.string.cleanthes_strength_very_weak)
-        2    -> getString(R.string.cleanthes_strength_weak)
-        3    -> getString(R.string.cleanthes_strength_fair)
-        4    -> getString(R.string.cleanthes_strength_strong)
-        5    -> getString(R.string.cleanthes_strength_very_strong)
-        else -> ""
-    }
+        Spacer(Modifier.height(8.dp))
 
-    private fun updateMatchIndicator() {
-        val password = etPassword.text.toString()
-        val confirm  = etConfirm.text.toString()
-        if (confirm.isEmpty()) { tvMatchIndicator.text = ""; return }
-        if (password == confirm) {
-            tvMatchIndicator.text = "✓ Passwords match"
-            tvMatchIndicator.setTextColor(ContextCompat.getColor(this, R.color.cleanthes_success))
-        } else {
-            tvMatchIndicator.text = "✗ Passwords do not match"
-            tvMatchIndicator.setTextColor(ContextCompat.getColor(this, R.color.cleanthes_error))
+        // ── Acknowledge ───────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceElevated)
+                .clickable { viewModel.onAcknowledgeToggle(!uiState.acknowledged) }
+                .padding(horizontal = 12.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Checkbox(
+                checked = uiState.acknowledged,
+                onCheckedChange = viewModel::onAcknowledgeToggle,
+                colors = CheckboxDefaults.colors(
+                    checkedColor   = GoldPrimary,
+                    uncheckedColor = TextMuted,
+                    checkmarkColor = OnGold,
+                ),
+            )
+            Text(
+                text = "I understand this password cannot be recovered. The gate does not ask twice.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+            )
         }
-    }
 
-    private fun togglePasswordVisibility(field: EditText, toggle: ImageButton, visible: Boolean) {
-        field.inputType = if (visible)
-            android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-        else
-            android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        field.setSelection(field.text.length)
-        toggle.setImageResource(if (visible) R.drawable.ic_eye_on else R.drawable.ic_eye_off)
-    }
-
-    private fun setLoadingState(loading: Boolean) {
-        cbAcknowledge.isEnabled = !loading
-        btnCreate.isEnabled = !loading
-        btnCreate.alpha = if (loading) 0.35f else 1.0f
-        btnCreate.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(this, R.color.citadel_gold)
-        )
-        btnProgressBar.visibility = if (loading) View.VISIBLE else View.GONE
-    }
-
-    private fun showError(message: String) {
-        tvError.text = message
-        tvError.visibility = View.VISIBLE
-    }
-
-    private fun hideError() {
-        tvError.visibility = View.GONE
-    }
-
-    @Throws(Exception::class)
-    private fun getEncryptedPrefs(): SharedPreferences {
-        val masterKey = MasterKey.Builder(this)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        return EncryptedSharedPreferences.create(
-            this,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
-
-    private fun simpleWatcher(onChanged: (String) -> Unit) = object : android.text.TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-        override fun afterTextChanged(s: android.text.Editable?) = Unit
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-            onChanged(s?.toString() ?: "")
+        // ── Create button ─────────────────────────────────────────────────────
+        Button(
+            onClick = viewModel::attemptSetup,
+            enabled = uiState.canCreate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor         = GoldPrimary,
+                contentColor           = OnGold,
+                disabledContainerColor = GoldPrimary.copy(alpha = 0.3f),
+                disabledContentColor   = OnGold.copy(alpha = 0.3f),
+            ),
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier    = Modifier.size(20.dp),
+                    color       = OnGold,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text(
+                    text  = "SEAL THE VAULT",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         }
     }
 }
 
+// ── Reusable components (will migrate to ui/components/ when LoginActivity is done) ──
+
+@Composable
+internal fun CleanthesPasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    visible: Boolean,
+    onVisibilityToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction    = imeAction,
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() },
+        ),
+        trailingIcon = {
+            IconButton(onClick = onVisibilityToggle) {
+                Icon(
+                    imageVector        = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (visible) "Hide password" else "Show password",
+                    tint               = TextMuted,
+                )
+            }
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor   = GoldPrimary,
+            unfocusedBorderColor = TextMuted.copy(alpha = 0.35f),
+            focusedLabelColor    = GoldPrimary,
+            unfocusedLabelColor  = TextMuted,
+            cursorColor          = GoldPrimary,
+            focusedTextColor     = TextPrimary,
+            unfocusedTextColor   = TextPrimary,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+internal fun PasswordStrengthBar(score: Int, modifier: Modifier = Modifier) {
+    val segmentColors = listOf(
+        if (score >= 1) StrengthVeryWeak   else SurfaceModal,
+        if (score >= 2) StrengthWeak       else SurfaceModal,
+        if (score >= 3) StrengthFair       else SurfaceModal,
+        if (score >= 4) StrengthStrong     else SurfaceModal,
+        if (score >= 5) StrengthVeryStrong else SurfaceModal,
+    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        segmentColors.forEach { color ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color)
+            )
+        }
+    }
+}
+
+private fun strengthLabel(score: Int): String = when (score) {
+    1    -> "Very Weak"
+    2    -> "Weak"
+    3    -> "Fair"
+    4    -> "Strong"
+    5    -> "Very Strong"
+    else -> ""
+}
+
+private fun strengthColor(score: Int): Color = when (score) {
+    1    -> StrengthVeryWeak
+    2    -> StrengthWeak
+    3    -> StrengthFair
+    4    -> StrengthStrong
+    5    -> StrengthVeryStrong
+    else -> Color.Transparent
+}

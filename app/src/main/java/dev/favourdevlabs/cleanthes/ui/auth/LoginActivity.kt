@@ -69,11 +69,11 @@ class LoginActivity : AppCompatActivity() {
     private fun loadStoredCredentials() {
         try {
             val prefs = getEncryptedPrefs()
-            storedAuthSalt = prefs.getString(SetupActivity.KEY_AUTH_SALT, null)
-            storedEncSalt = prefs.getString(SetupActivity.KEY_ENC_SALT, null)
-            storedMasterHash = prefs.getString(SetupActivity.KEY_MASTER_HASH, null)
-            biometricEnabled = prefs.getBoolean(SetupActivity.KEY_BIOMETRIC_ENABLED, false)
-            storedBiometricSecret = prefs.getString(SetupActivity.KEY_BIOMETRIC_SECRET, null)
+            storedAuthSalt = prefs.getString(KEY_AUTH_SALT, null)
+            storedEncSalt = prefs.getString(KEY_ENC_SALT, null)
+            storedMasterHash = prefs.getString(KEY_MASTER_HASH, null)
+            biometricEnabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
+            storedBiometricSecret = prefs.getString(KEY_BIOMETRIC_SECRET, null)
         } catch (e: Exception) {
             storedAuthSalt = null
             storedEncSalt = null
@@ -305,7 +305,7 @@ class LoginActivity : AppCompatActivity() {
         val masterKey = MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
         return EncryptedSharedPreferences.create(
                 this,
-                SetupActivity.PREFS_NAME,
+                PREFS_NAME,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
