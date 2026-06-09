@@ -1,319 +1,287 @@
 package dev.favourdevlabs.cleanthes.ui.auth
 
-import android.animation.ObjectAnimator
 import android.content.Intent
-import android.content.SharedPreferences
-import android.content.res.ColorStateList
 import android.os.Bundle
-import android.os.CountDownTimer
-import android.text.Editable
-import android.text.InputType
-import android.text.TextWatcher
-import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.ProgressBar
-import android.widget.TextView
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
-import dev.favourdevlabs.cleanthes.security.KeyDerivation
+import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
 import dev.favourdevlabs.cleanthes.ui.home.HomeActivity
+import dev.favourdevlabs.cleanthes.ui.theme.*
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
-    companion object {
-        private const val MAX_ATTEMPTS = 5
-        private const val LOCKOUT_DURATION_MS = 30_000L
-    }
-
-    private lateinit var etPassword: EditText
-    private lateinit var btnTogglePassword: ImageButton
-    private lateinit var tvError: TextView
-    private lateinit var tvAttempts: TextView
-    private lateinit var btnUnlock: Button
-    private lateinit var divider: View
-    private lateinit var tvBiometricHint: TextView
-    private lateinit var btnBiometric: ImageButton
-    private lateinit var progressBar: ProgressBar
-
-    private var passwordVisible = false
-    private var failedAttempts = 0
-    private var isLockedOut = false
-    private var lockoutTimer: CountDownTimer? = null
-
-    private var storedAuthSalt: String? = null
-    private var storedEncSalt: String? = null
-    private var storedMasterHash: String? = null
-    private var biometricEnabled = false
-    private var storedBiometricSecret: String? = null
-    private var isAuthenticating = false
+    private val viewModel: LoginViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
-        loadStoredCredentials()
-        bindViews()
-        attachListeners()
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        lockoutTimer?.cancel()
-    }
-
-    private fun loadStoredCredentials() {
-        try {
-            val prefs = getEncryptedPrefs()
-            storedAuthSalt = prefs.getString(KEY_AUTH_SALT, null)
-            storedEncSalt = prefs.getString(KEY_ENC_SALT, null)
-            storedMasterHash = prefs.getString(KEY_MASTER_HASH, null)
-            biometricEnabled = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
-            storedBiometricSecret = prefs.getString(KEY_BIOMETRIC_SECRET, null)
-        } catch (e: Exception) {
-            storedAuthSalt = null
-            storedEncSalt = null
-            storedMasterHash = null
-            biometricEnabled = false
-            storedBiometricSecret = null
-        }
-    }
-
-    private fun bindViews() {
-        etPassword = findViewById(R.id.login_et_password)
-        btnTogglePassword = findViewById(R.id.login_btn_toggle_password)
-        tvError = findViewById(R.id.login_tv_error)
-        tvAttempts = findViewById(R.id.login_tv_attempts)
-        btnUnlock = findViewById(R.id.login_btn_unlock)
-        divider = findViewById(R.id.login_divider)
-        tvBiometricHint = findViewById(R.id.login_tv_biometric_hint)
-        btnBiometric = findViewById(R.id.login_btn_biometric)
-        progressBar = findViewById(R.id.login_progress)
-
-        if (biometricEnabled && BiometricHelper.isBiometricAvailable(this)) {
-            divider.visibility = View.VISIBLE
-            tvBiometricHint.visibility = View.VISIBLE
-            btnBiometric.visibility = View.VISIBLE
-        }
-
-        btnUnlock.backgroundTintList =
-                ColorStateList.valueOf(ContextCompat.getColor(this, R.color.citadel_gold))
-    }
-
-    private fun attachListeners() {
-        etPassword.addTextChangedListener(
-                object : SimpleTextWatcher() {
-                    override fun onTextChanged(
-                            s: CharSequence,
-                            start: Int,
-                            before: Int,
-                            count: Int
-                    ) {
-                        hideError()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.events.collect { event ->
+                    when (event) {
+                        LoginEvent.NavigateToHome -> {
+                            startActivity(
+                                Intent(this@LoginActivity, HomeActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                            )
+                            finish()
+                        }
+                        LoginEvent.TriggerBiometric -> triggerBiometric()
                     }
                 }
+            }
+        }
+
+        setContent {
+            CleanthesTheme {
+                LoginScreen(viewModel = viewModel)
+            }
+        }
+    }
+
+    // Biometric stays in Activity — BiometricPrompt requires FragmentActivity context
+    private fun triggerBiometric() {
+        BiometricHelper.authenticate(
+            this,
+            object : BiometricHelper.AuthCallback {
+                override fun onSuccess()                    = viewModel.onBiometricSuccess()
+                override fun onFailure()                    = viewModel.onBiometricFailure()
+                override fun onError(errorMessage: String) = viewModel.onBiometricError(errorMessage)
+            }
         )
-
-        btnTogglePassword.setOnClickListener {
-            passwordVisible = !passwordVisible
-            togglePasswordVisibility(passwordVisible)
-        }
-
-        etPassword.setOnEditorActionListener { _, _, _ ->
-            if (!isLockedOut) attemptPasswordUnlock()
-            true
-        }
-
-        btnUnlock.setOnClickListener { if (!isLockedOut) attemptPasswordUnlock() }
-
-        btnBiometric.setOnClickListener {
-    if (isAuthenticating) return@setOnClickListener  // guard
-    if (BiometricHelper.isBiometricAvailable(this)) {
-        isAuthenticating = true
-        btnBiometric.isEnabled = false  // visual feedback too
-        BiometricHelper.authenticate(this, object : BiometricHelper.AuthCallback {
-            override fun onSuccess() {
-                isAuthenticating = false
-                deriveKeyAndNavigate(null, fromBiometric = true)
-            }
-            override fun onFailure() {
-                isAuthenticating = false
-                btnBiometric.isEnabled = true
-            }
-            override fun onError(errorMessage: String) {
-                isAuthenticating = false
-                btnBiometric.isEnabled = true
-                showError(errorMessage)
-            }
-        })
     }
 }
-    }
 
-    private fun attemptPasswordUnlock() {
-        val password = etPassword.text.toString()
-        if (password.isEmpty()) {
-            showError("Enter your master password")
-            return
-        }
-        setLoadingState(true)
-        Thread { verifyPasswordOnBackground(password) }.start()
-    }
+@Composable
+private fun LoginScreen(viewModel: LoginViewModel) {
+    val uiState      by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusManager  = LocalFocusManager.current
 
-    private fun verifyPasswordOnBackground(attempt: String) {
-        val authSalt = storedAuthSalt ?: return
-        val masterHash = storedMasterHash ?: return
-        try {
-            val correct =
-                    KeyDerivation.verifyMasterPassword(attempt.toCharArray(), authSalt, masterHash)
-            runOnUiThread {
-                setLoadingState(false)
-                if (correct) {
-                    failedAttempts = 0
-                    deriveKeyAndNavigate(attempt, fromBiometric = false)
-                } else handleFailedAttempt()
-            }
-        } catch (e: Exception) {
-            runOnUiThread {
-                setLoadingState(false)
-                showError(getString(R.string.error_generic))
-            }
+    // ── Shake animation ───────────────────────────────────────────────────────
+    val shakeOffset = remember { Animatable(0f) }
+    LaunchedEffect(uiState.shakeCounter) {
+        if (uiState.shakeCounter > 0) {
+            shakeOffset.animateTo(
+                targetValue   = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 500
+                    (-16f) at 50
+                      16f  at 100
+                    (-12f) at 150
+                      12f  at 200
+                    (-8f)  at 250
+                      8f   at 300
+                    (-4f)  at 350
+                      4f   at 400
+                      0f   at 500
+                }
+            )
         }
     }
 
-    private fun deriveKeyAndNavigate(masterPassword: String?, fromBiometric: Boolean) {
-        setLoadingState(true)
-        Thread {
-                    try {
-                        val saltBytes =
-                                android.util.Base64.decode(
-                                        storedEncSalt,
-                                        android.util.Base64.DEFAULT
-                                )
-                        val source =
-                                if (fromBiometric) storedBiometricSecret!! else masterPassword!!
-                        val sessionKey = KeyDerivation.deriveKey(source.toCharArray(), saltBytes)
-                        SessionManager.setSessionKey(sessionKey)
-                        runOnUiThread {
-                            setLoadingState(false)
-                            navigateToHome()
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            setLoadingState(false)
-                            showError(getString(R.string.error_generic))
-                        }
+    // ── Attempts/lockout text — formatted in composable, not ViewModel ────────
+    val attemptsText: String? = when {
+        uiState.isLockedOut ->
+            stringResource(R.string.login_locked_out, uiState.lockoutSecondsRemaining)
+        uiState.failedAttempts > 0 ->
+            stringResource(R.string.login_attempts_remaining, MAX_ATTEMPTS - uiState.failedAttempts)
+        else -> null
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 28.dp)
+    ) {
+
+        // ── Main content ──────────────────────────────────────────────────────
+        Column(
+            modifier            = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .padding(top = 96.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+
+            Icon(
+                imageVector        = Icons.Default.Lock,
+                contentDescription = null,
+                tint               = GoldPrimary,
+                modifier           = Modifier.size(56.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text          = stringResource(R.string.app_name).uppercase(),
+                fontSize      = 34.sp,
+                fontWeight    = FontWeight.Bold,
+                letterSpacing = 0.12.em,
+                color         = TextPrimary,
+                textAlign     = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text      = stringResource(R.string.login_subtitle),
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = TextSecondary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(32.dp))
+
+            // ── Password + feedback ───────────────────────────────────────────
+            Column(
+                modifier            = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text  = stringResource(R.string.login_label_password).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                )
+                CleanthesPasswordField(
+                    value              = uiState.password,
+                    onValueChange      = viewModel::onPasswordChange,
+                    label              = stringResource(R.string.hint_master_password),
+                    visible            = uiState.passwordVisible,
+                    onVisibilityToggle = viewModel::onPasswordVisibilityToggle,
+                    enabled            = !uiState.isLockedOut,
+                    imeAction          = ImeAction.Done,
+                    onImeAction        = {
+                        focusManager.clearFocus()
+                        viewModel.attemptPasswordUnlock()
+                    },
+                    modifier           = Modifier.offset(x = shakeOffset.value.dp),
+                )
+                AnimatedVisibility(visible = uiState.errorMessage != null) {
+                    uiState.errorMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = Danger)
                     }
                 }
-                .start()
-    }
-
-    private fun navigateToHome() {
-        startActivity(
-                Intent(this, HomeActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                AnimatedVisibility(visible = attemptsText != null) {
+                    attemptsText?.let {
+                        Text(
+                            text  = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (uiState.isLockedOut) Danger else GoldDim,
+                        )
+                    }
                 }
-        )
-        finish()
-    }
+            }
 
-    private fun handleFailedAttempt() {
-        failedAttempts++
-        showError(getString(R.string.error_wrong_password))
-        if (failedAttempts >= MAX_ATTEMPTS) {
-            startLockout()
-        } else {
-            val remaining = MAX_ATTEMPTS - failedAttempts
-            tvAttempts.text = getString(R.string.login_attempts_remaining, remaining)
-            tvAttempts.visibility = View.VISIBLE
+            Spacer(Modifier.height(24.dp))
+
+            // ── Unlock button ─────────────────────────────────────────────────
+            Button(
+                onClick  = { focusManager.clearFocus(); viewModel.attemptPasswordUnlock() },
+                enabled  = !uiState.isLockedOut && !uiState.isLoading,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape    = RoundedCornerShape(8.dp),
+                colors   = ButtonDefaults.buttonColors(
+                    containerColor         = GoldPrimary,
+                    contentColor           = OnGold,
+                    disabledContainerColor = GoldPrimary.copy(alpha = 0.3f),
+                    disabledContentColor   = OnGold.copy(alpha = 0.3f),
+                ),
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(20.dp),
+                        color       = OnGold,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(stringResource(R.string.login_btn_unlock), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            // ── Biometric section (conditional) ───────────────────────────────
+            if (uiState.showBiometricSection) {
+                Spacer(Modifier.height(28.dp))
+                HorizontalDivider(color = SurfaceModal, thickness = 1.dp)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text      = stringResource(R.string.login_biometric_hint),
+                    style     = MaterialTheme.typography.bodyMedium,
+                    color     = TextSecondary,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(12.dp))
+                IconButton(
+                    onClick  = viewModel::requestBiometricAuth,
+                    enabled  = !uiState.isAuthenticating && !uiState.isLoading,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceElevated),
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Fingerprint,
+                        contentDescription = stringResource(R.string.cd_fingerprint_icon),
+                        tint               = GoldPrimary.copy(
+                            alpha = if (uiState.isAuthenticating) 0.4f else 1f
+                        ),
+                        modifier           = Modifier.size(36.dp),
+                    )
+                }
+            }
         }
-        shakeView(etPassword.parent as? View ?: etPassword)
-        etPassword.setText("")
-    }
 
-    private fun startLockout() {
-        isLockedOut = true
-        btnUnlock.isEnabled = false
-        etPassword.isEnabled = false
-
-        lockoutTimer =
-                object : CountDownTimer(LOCKOUT_DURATION_MS, 1000) {
-                            override fun onTick(millisUntilFinished: Long) {
-                                val secondsLeft = (millisUntilFinished / 1000).toInt()
-                                tvAttempts.text = getString(R.string.login_locked_out, secondsLeft)
-                                tvAttempts.visibility = View.VISIBLE
-                                tvAttempts.setTextColor(
-                                        ContextCompat.getColor(
-                                                this@LoginActivity,
-                                                R.color.cleanthes_error
-                                        )
-                                )
-                            }
-
-                            override fun onFinish() {
-                                isLockedOut = false
-                                failedAttempts = 0
-                                btnUnlock.isEnabled = true
-                                etPassword.isEnabled = true
-                                tvAttempts.visibility = View.GONE
-                                tvError.visibility = View.GONE
-                                etPassword.requestFocus()
-                            }
-                        }
-                        .start()
-    }
-
-    private fun togglePasswordVisibility(visible: Boolean) {
-        etPassword.inputType =
-                if (visible)
-                        InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-                else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        etPassword.setSelection(etPassword.text.length)
-        btnTogglePassword.setImageResource(
-                if (visible) R.drawable.ic_eye_on else R.drawable.ic_eye_off
-        )
-    }
-
-    private fun setLoadingState(loading: Boolean) {
-        btnUnlock.isEnabled = !loading && !isLockedOut
-        btnUnlock.alpha = if (loading) 0.5f else 1.0f
-        btnUnlock.backgroundTintList =
-                ColorStateList.valueOf(ContextCompat.getColor(this, R.color.citadel_gold))
-        progressBar.visibility = if (loading) View.VISIBLE else View.GONE
-    }
-
-    private fun showError(message: String) {
-        tvError.text = message
-        tvError.visibility = View.VISIBLE
-    }
-    private fun hideError() {
-        tvError.visibility = View.GONE
-    }
-
-    private fun shakeView(view: View) {
-        ObjectAnimator.ofFloat(view, "translationX", 0f, -16f, 16f, -12f, 12f, -8f, 8f, -4f, 4f, 0f)
-                .apply { duration = 500 }
-                .start()
-    }
-
-    @Throws(Exception::class)
-    private fun getEncryptedPrefs(): SharedPreferences {
-        val masterKey = MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-        return EncryptedSharedPreferences.create(
-                this,
-                PREFS_NAME,
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
-
-    private abstract class SimpleTextWatcher : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-        override fun afterTextChanged(s: Editable) {}
+        // ── Stoic quote — bottom-anchored ─────────────────────────────────────
+        Column(
+            modifier            = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(bottom = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.width(40.dp).height(1.dp).background(GoldPrimary.copy(alpha = 0.5f)))
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text      = "The willing are led by fate;\nthe unwilling are dragged.",
+                style     = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                color     = TextSecondary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text      = "— Cleanthes of Assos",
+                style     = MaterialTheme.typography.labelSmall,
+                color     = GoldDim,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

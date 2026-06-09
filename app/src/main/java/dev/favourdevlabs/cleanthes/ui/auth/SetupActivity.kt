@@ -41,6 +41,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dev.favourdevlabs.cleanthes.ui.home.HomeActivity
+import dev.favourdevlabs.cleanthes.ui.components.*
 import dev.favourdevlabs.cleanthes.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -275,82 +276,6 @@ private fun SetupScreen(viewModel: SetupViewModel) {
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-        }
-    }
-}
-
-// ── Reusable components (will migrate to ui/components/ when LoginActivity is done) ──
-
-@Composable
-internal fun CleanthesPasswordField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    visible: Boolean,
-    onVisibilityToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-    imeAction: ImeAction = ImeAction.Next,
-    onImeAction: () -> Unit = {},
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Password,
-            imeAction    = imeAction,
-        ),
-        keyboardActions = KeyboardActions(
-            onNext = { onImeAction() },
-            onDone = { onImeAction() },
-        ),
-        trailingIcon = {
-            IconButton(onClick = onVisibilityToggle) {
-                Icon(
-                    imageVector        = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (visible) "Hide password" else "Show password",
-                    tint               = TextMuted,
-                )
-            }
-        },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor   = GoldPrimary,
-            unfocusedBorderColor = TextMuted.copy(alpha = 0.35f),
-            focusedLabelColor    = GoldPrimary,
-            unfocusedLabelColor  = TextMuted,
-            cursorColor          = GoldPrimary,
-            focusedTextColor     = TextPrimary,
-            unfocusedTextColor   = TextPrimary,
-        ),
-        modifier = modifier.fillMaxWidth(),
-    )
-}
-
-@Composable
-internal fun PasswordStrengthBar(score: Int, modifier: Modifier = Modifier) {
-    val segmentColors = listOf(
-        if (score >= 1) StrengthVeryWeak   else SurfaceModal,
-        if (score >= 2) StrengthWeak       else SurfaceModal,
-        if (score >= 3) StrengthFair       else SurfaceModal,
-        if (score >= 4) StrengthStrong     else SurfaceModal,
-        if (score >= 5) StrengthVeryStrong else SurfaceModal,
-    )
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        segmentColors.forEach { color ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(color)
-            )
         }
     }
 }
