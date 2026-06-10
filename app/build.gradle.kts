@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    // Kotlin 2.0+: replace composeOptions block below with this plugin instead:
-    // id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
 }
 
 val lifecycleVersion = "2.8.2"
@@ -41,18 +41,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions { jvmTarget = "17" }
+    kotlin {
+        jvmToolchain(17)
+    }
 
     buildFeatures {
         compose = true
         viewBinding = true   // keep true during migration; flip to false on last screen
     }
 
-    composeOptions {
-        // Kotlin 1.9.x only — delete this block entirely if on Kotlin 2.0+
-        // Kotlin 1.9.22 → "1.5.8"  |  1.9.23 → "1.5.11"  |  1.9.24 → "1.5.14"
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
 }
 
 dependencies {
@@ -93,4 +90,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+
+    // ── Hilt ─────────────────────────────────────────────────────────────────
+    implementation("com.google.dagger:hilt-android:2.59")
+    ksp("com.google.dagger:hilt-android-compiler:2.59")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
 }

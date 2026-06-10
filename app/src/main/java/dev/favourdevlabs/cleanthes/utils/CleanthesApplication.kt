@@ -1,10 +1,13 @@
 package dev.favourdevlabs.cleanthes.utils
 
+import dagger.hilt.android.HiltAndroidApp
+
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 
+@HiltAndroidApp
 class CleanthesApplication : Application() {
 
     private var startedActivityCount = 0
