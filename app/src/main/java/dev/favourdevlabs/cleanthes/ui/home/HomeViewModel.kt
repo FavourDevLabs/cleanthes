@@ -2,97 +2,114 @@ package dev.favourdevlabs.cleanthes.ui.home
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+data class HomeUiState(
+    val isLoading: Boolean = false,
+    val entries: List<VaultEntry> = emptyList(),
+    val categories: List<String> = emptyList(),
+    val entryCount: Int = 0,
+    val searchQuery: String = "",
+    val selectedCategory: String = "All",
+    val pendingDeleteIds: Set<Long> = emptySet(),
+    val errorMessage: String? = null,
+) {
+    // Derived — composable reads this, never the raw entries list
+    val filteredEntries: List<VaultEntry>
+        get() = entries
+            .filter { it.id !in pendingDeleteIds }
+            .filter { entry ->
+                (selectedCategory == "All" ||
+                        entry.category.equals(selectedCategory, ignoreCase = true)) &&
+                (searchQuery.isEmpty() ||
+                        entry.title.lowercase().contains(searchQuery.lowercase()) ||
+                        (entry.username?.lowercase()?.contains(searchQuery.lowercase()) == true))
+            }
+}
 
-    private val _filteredEntries = MutableLiveData<List<VaultEntry>>()
-    private val _errorMessage    = MutableLiveData<String>()
-    private val _isLoading       = MutableLiveData(false)
-    private val _categories      = MutableLiveData<List<String>>()
-    private val _entryCount      = MutableLiveData(0)
+class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
-    val filteredEntries: LiveData<List<VaultEntry>> = _filteredEntries
-    val errorMessage:    LiveData<String>           = _errorMessage
-    val isLoading:       LiveData<Boolean>          = _isLoading
-    val categories:      LiveData<List<String>>     = _categories
-    val entryCount:      LiveData<Int>              = _entryCount
+    private val repository = VaultRepository.getInstance(app)
 
-    private val repository   = VaultRepository.getInstance(application)
-    private var masterList   = emptyList<VaultEntry>()
-    private var currentQuery    = ""
-    private var currentCategory = "All"
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     fun loadEntries() {
         val key = SessionManager.getSessionKey() ?: run {
-            _errorMessage.postValue("Session expired. Please Unlock again")
+            _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
             return
         }
-
-        _isLoading.postValue(true)
-
-        Thread {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
             try {
-                val all = repository.getAllEntries(key)
-                masterList = all
-                _entryCount.postValue(all.size)
-                _categories.postValue(repository.getAllCategories())
-                applyFilter()
+                val (all, cats) = withContext(Dispatchers.IO) {
+                    Pair(repository.getAllEntries(key), repository.getAllCategories())
+                }
+                _uiState.update {
+                    it.copy(
+                        isLoading  = false,
+                        entries    = all,
+                        categories = cats,
+                        entryCount = all.size,
+                    )
+                }
             } catch (e: Exception) {
-                _errorMessage.postValue("Failed to load entries: ${e.message}")
-            } finally {
-                _isLoading.postValue(false)
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Failed to load entries: ${e.message}")
+                }
             }
-        }.start()
+        }
     }
 
-    fun setSearchQuery(query: String?) {
-        currentQuery = query?.trim() ?: ""
-        applyFilter()
-    }
+    fun setSearchQuery(query: String) =
+        _uiState.update { it.copy(searchQuery = query.trim()) }
 
-    fun setCategory(category: String) {
-        currentCategory = category
-        applyFilter()
-    }
+    fun setCategory(category: String) =
+        _uiState.update { it.copy(selectedCategory = category) }
 
-    fun deleteEntry(entryId: Long) {
-        Thread {
+    // Called immediately on swipe — removes item from visible list before snackbar shows
+    fun onEntrySwipedToDelete(entryId: Long) =
+        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds + entryId) }
+
+    // Called on UNDO — item re-appears, no DB operation
+    fun undoDelete(entryId: Long) =
+        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
+
+    // Called on snackbar dismissed — commits DB delete
+    fun confirmDelete(entryId: Long) {
+        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
+        viewModelScope.launch {
             try {
-                repository.deleteEntry(entryId)
+                withContext(Dispatchers.IO) { repository.deleteEntry(entryId) }
                 loadEntries()
             } catch (_: Exception) {
-                _errorMessage.postValue("Failed to delete entry.")
+                _uiState.update { it.copy(errorMessage = "Failed to delete entry.") }
             }
-        }.start()
+        }
     }
+
+    fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
     fun toggleFavorite(entry: VaultEntry, plainPassword: String) {
         val key = SessionManager.getSessionKey() ?: return
         entry.isFavorite = !entry.isFavorite
-        Thread {
+        viewModelScope.launch {
             try {
-                repository.updateEntry(entry, plainPassword, key)
+                withContext(Dispatchers.IO) { repository.updateEntry(entry, plainPassword, key) }
                 loadEntries()
             } catch (_: Exception) {
-                _errorMessage.postValue("Failed to update entry")
+                _uiState.update { it.copy(errorMessage = "Failed to update entry.") }
             }
-        }.start()
-    }
-
-    private fun applyFilter() {
-        val result = masterList.filter { entry ->
-            val matchesCategory = currentCategory == "All" ||
-                entry.category.equals(currentCategory, ignoreCase = true)
-            val matchesQuery = currentQuery.isEmpty() ||
-                entry.title.lowercase().contains(currentQuery.lowercase()) ||
-                entry.username.lowercase().contains(currentQuery.lowercase())
-            matchesCategory && matchesQuery
         }
-        _filteredEntries.postValue(result)
     }
 }

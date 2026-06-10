@@ -92,3 +92,17 @@ fun PasswordStrengthBar(score: Int, modifier: Modifier = Modifier) {
         }
     }
 }
+@Composable
+fun cleanthesOutlinedTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor   = GoldPrimary,
+    unfocusedBorderColor = TextMuted.copy(alpha = 0.35f),
+    disabledBorderColor  = TextMuted.copy(alpha = 0.15f),
+    focusedLabelColor    = GoldPrimary,
+    unfocusedLabelColor  = TextMuted,
+    disabledLabelColor   = TextMuted.copy(alpha = 0.4f),
+    cursorColor          = GoldPrimary,
+    focusedTextColor     = TextPrimary,
+    unfocusedTextColor   = TextPrimary,
+    disabledTextColor    = TextPrimary.copy(alpha = 0.4f),
+)
+

@@ -1,66 +1,77 @@
 package dev.favourdevlabs.cleanthes.ui.home
 
+import kotlinx.coroutines.launch
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.PorterDuff
 import android.os.Bundle
-import android.view.View
-import android.widget.ImageButton
-import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.NonNull
-import androidx.appcompat.widget.SearchView
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.SimpleItemAnimator
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.snackbar.Snackbar
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.ui.addedit.AddEditActivity
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
+import dev.favourdevlabs.cleanthes.ui.components.cleanthesOutlinedTextFieldColors
 import dev.favourdevlabs.cleanthes.ui.detail.DetailActivity
 import dev.favourdevlabs.cleanthes.ui.settings.SettingsActivity
+import dev.favourdevlabs.cleanthes.ui.theme.*
 
-class HomeActivity : AuthenticatedActivity(), VaultEntryAdapter.OnEntryClickListener {
+class HomeActivity : AuthenticatedActivity() {
 
-    companion object {
-        const val EXTRA_ENTRY_ID = "extra_entry_id"
-    }
-
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: VaultEntryAdapter
-    private lateinit var viewModel: HomeViewModel
-    private lateinit var searchView: SearchView
-    private lateinit var chipGroup: ChipGroup
-    private lateinit var emptyState: View
-    private lateinit var tvEntryCount: TextView
-    private lateinit var btnSearch: ImageButton
-    private lateinit var btnLock: ImageButton
-    private lateinit var btnSettings: ImageButton
-    private lateinit var fabAdd: FloatingActionButton
-    private lateinit var rootView: View
-
-    private var searchVisible = false
+    private val viewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_home)
-        bindViews()
-        setupRecyclerView()
-        setupViewModel()
-        attachListeners()
+        setContent {
+            CleanthesTheme {
+                HomeScreen(
+                    viewModel    = viewModel,
+                    onEntryClick = { entry ->
+                        startActivity(
+                            Intent(this, DetailActivity::class.java).apply {
+                                putExtra(DetailActivity.EXTRA_ENTRY_ID, entry.id)
+                            }
+                        )
+                    },
+                    onCopyPassword = ::copyToClipboard,
+                    onAddNew       = { startActivity(Intent(this, AddEditActivity::class.java)) },
+                    onSettings     = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                    onLock         = { SessionManager.clearSession(); redirectToLogin() },
+                )
+            }
+        }
     }
 
     override fun onResume() {
@@ -68,226 +79,398 @@ class HomeActivity : AuthenticatedActivity(), VaultEntryAdapter.OnEntryClickList
         if (!isFinishing) viewModel.loadEntries()
     }
 
-    private fun bindViews() {
-        recyclerView = findViewById(R.id.home_recycler_view)
-        searchView = findViewById(R.id.home_search_view)
-        chipGroup = findViewById(R.id.home_chip_group)
-        emptyState = findViewById(R.id.home_empty_state)
-        tvEntryCount = findViewById(R.id.home_tv_entry_count)
-        btnSearch = findViewById(R.id.home_btn_search)
-        btnSettings = findViewById(R.id.home_btn_settings)
-        btnLock = findViewById(R.id.home_btn_lock)
-        fabAdd = findViewById(R.id.home_fab_add)
-        rootView = findViewById(android.R.id.content)
-    }
-
-    private fun setupRecyclerView() {
-        adapter = VaultEntryAdapter(this, this)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = adapter
-
-        (recyclerView.itemAnimator as? SimpleItemAnimator)
-            ?.setSupportsChangeAnimations(false)
-
-        setupSwipeToDelete()
-    }
-
-    private fun setupSwipeToDelete() {
-        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
-
-            override fun onMove(
-                rv: RecyclerView,
-                vh: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ) = false
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val position = viewHolder.adapterPosition
-                val swiped = adapter.getEntries()[position]
-                adapter.removeAt(position)
-
-                Snackbar.make(rootView, "\"${swiped.title}\" deleted", Snackbar.LENGTH_LONG)
-                    .setAction("UNDO") {
-                        adapter.insertAt(position, swiped)
-                        recyclerView.scrollToPosition(position)
-                    }
-                    .addCallback(object : Snackbar.Callback() {
-                        override fun onDismissed(snackbar: Snackbar, event: Int) {
-                            if (event != DISMISS_EVENT_ACTION) viewModel.deleteEntry(swiped.id)
-                        }
-                    })
-                    .setBackgroundTint(getColor(R.color.cleanthes_surface))
-                    .setTextColor(getColor(R.color.cleanthes_text_primary))
-                    .setActionTextColor(getColor(R.color.citadel_gold))
-                    .show()
-            }
-
-            /**
-             * Paints the delete affordance behind the swiping card.
-             *
-             * Draw order matters:
-             * 1. Red background — painted onto the canvas first
-             * 2. Trash icon — painted on top of the background
-             * 3. super — draws the card on top, covering what hasn't slid away
-             *
-             * Result: red background and trash icon are only visible in the
-             * region the card has already moved away from.
-             */
-            override fun onChildDraw(
-                c: Canvas,
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                dX: Float, dY: Float,
-                actionState: Int, isCurrentlyActive: Boolean
-            ) {
-                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX < 0) {
-                    val item = viewHolder.itemView
-
-                    val bgPaint = Paint().apply {
-                        color = 0xFFB71C1C.toInt()
-                        isAntiAlias = true
-                    }
-                    c.drawRect(
-                        item.right + dX, item.top.toFloat(),
-                        item.right.toFloat(), item.bottom.toFloat(),
-                        bgPaint
-                    )
-
-                    ContextCompat.getDrawable(recyclerView.context, R.drawable.ic_delete)?.let { icon ->
-                        val iconSize = dpToPx(22)
-                        val iconMargin = (item.height - iconSize) / 2
-                        val iconRight = item.right - iconMargin
-                        icon.setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-                        icon.setBounds(iconRight - iconSize, item.top + iconMargin, iconRight, item.bottom - iconMargin)
-                        icon.draw(c)
-                    }
-                }
-                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
-            }
-        }
-
-        ItemTouchHelper(callback).attachToRecyclerView(recyclerView)
-    }
-
-    private fun setupViewModel() {
-        viewModel = ViewModelProvider(this)[HomeViewModel::class.java]
-
-        viewModel.filteredEntries.observe(this) { entries ->
-            adapter.submitList(entries)
-            val isEmpty = entries.isNullOrEmpty()
-            emptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
-            recyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        }
-
-        viewModel.entryCount.observe(this) { count ->
-            tvEntryCount.text = when {
-                count == null || count == 0 -> ""
-                else -> "$count ${if (count == 1) "entry" else "entries"}"
-            }
-        }
-
-        viewModel.categories.observe(this) { buildCategoryChips(it) }
-
-        viewModel.errorMessage.observe(this) { message ->
-            if (!message.isNullOrEmpty()) {
-                Snackbar.make(rootView, message, Snackbar.LENGTH_LONG)
-                    .setBackgroundTint(getColor(R.color.cleanthes_surface))
-                    .setTextColor(getColor(R.color.cleanthes_text_primary))
-                    .show()
-            }
-        }
-
-        viewModel.isLoading.observe(this) { /* reserved */ }
-    }
-
-    private fun attachListeners() {
-        fabAdd.setOnClickListener { startActivity(Intent(this, AddEditActivity::class.java)) }
-        btnSearch.setOnClickListener { toggleSearchBar() }
-        btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
-        btnLock.setOnClickListener { lockVault() }
-
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String): Boolean {
-                viewModel.setSearchQuery(query); return true
-            }
-            override fun onQueryTextChange(newText: String): Boolean {
-                viewModel.setSearchQuery(newText); return true
-            }
-        })
-
-        searchView.setOnCloseListener {
-            viewModel.setSearchQuery("")
-            toggleSearchBar()
-            false
-        }
-    }
-
-    private fun buildCategoryChips(categoryNames: List<String>?) {
-        chipGroup.removeAllViews()
-        createChip("All").also { it.isChecked = true; chipGroup.addView(it) }
-        categoryNames?.forEach { chipGroup.addView(createChip(it)) }
-
-        chipGroup.setOnCheckedStateChangeListener { group, checkIds ->
-            if (checkIds.isEmpty()) return@setOnCheckedStateChangeListener
-            val selected = group.findViewById<Chip>(checkIds[0])
-            selected?.let { viewModel.setCategory(it.text.toString()) }
-        }
-    }
-
-    private fun createChip(text: String) = Chip(this).apply {
-        this.text = text
-        id = View.generateViewId()
-        isCheckable = true
-        setChipBackgroundColorResource(R.color.cleanthes_surface)
-        setTextColor(getColor(R.color.cleanthes_text_secondary))
-        isCheckedIconVisible = false
-        setChipStrokeColorResource(R.color.cleanthes_border)
-        chipStrokeWidth = 1f
-
-        setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                setChipBackgroundColorResource(R.color.citadel_gold)
-                setTextColor(getColor(R.color.cleanthes_black))
-                setChipStrokeColorResource(R.color.citadel_gold)
-            } else {
-                setChipBackgroundColorResource(R.color.cleanthes_surface)
-                setTextColor(getColor(R.color.cleanthes_text_secondary))
-                setChipStrokeColorResource(R.color.cleanthes_border)
-            }
-        }
-    }
-
-    override fun onEntryClick(entry: VaultEntry) {
-        startActivity(Intent(this, DetailActivity::class.java).apply {
-            putExtra(EXTRA_ENTRY_ID, entry.id)
-        })
-    }
-
-    override fun onCopyClick(password: String) {
+    private fun copyToClipboard(password: String) {
         (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
             .setPrimaryClip(ClipData.newPlainText("password", password))
         Toast.makeText(this, "Password copied to clipboard", Toast.LENGTH_SHORT).show()
     }
+}
 
-    private fun toggleSearchBar() {
-        searchVisible = !searchVisible
-        if (searchVisible) {
-            searchView.visibility = View.VISIBLE
-            searchView.requestFocus()
-            btnSearch.setImageResource(R.drawable.ic_close)
-        } else {
-            searchView.setQuery("", false)
-            searchView.clearFocus()
-            searchView.visibility = View.GONE
-            viewModel.setSearchQuery("")
-            btnSearch.setImageResource(R.drawable.ic_search)
+// ── Screen ────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeScreen(
+    viewModel:     HomeViewModel,
+    onEntryClick:  (VaultEntry) -> Unit,
+    onCopyPassword: (String) -> Unit,
+    onAddNew:      () -> Unit,
+    onSettings:    () -> Unit,
+    onLock:        () -> Unit,
+) {
+    val uiState          by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope             = rememberCoroutineScope()
+    var searchVisible    by remember { mutableStateOf(false) }
+
+    // Error → snackbar (one-shot)
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
         }
     }
 
-    private fun lockVault() {
-        SessionManager.clearSession()
-        redirectToLogin()
-    }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost   = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData   = data,
+                    containerColor = SurfaceElevated,
+                    contentColor   = TextPrimary,
+                    actionColor    = GoldPrimary,
+                )
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick        = onAddNew,
+                containerColor = GoldPrimary,
+                contentColor   = OnGold,
+                elevation      = FloatingActionButtonDefaults.elevation(4.dp),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add new entry")
+            }
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
 
-    private fun dpToPx(dp: Int) = Math.round(dp * resources.displayMetrics.density)
+            // ── Toolbar ───────────────────────────────────────────────────────
+            HomeToolbar(
+                entryCount    = uiState.entryCount,
+                searchVisible = searchVisible,
+                onSearchToggle = {
+                    searchVisible = !searchVisible
+                    if (!searchVisible) viewModel.setSearchQuery("")
+                },
+                onSettings = onSettings,
+                onLock     = onLock,
+            )
+
+            // ── Search bar (animated) ─────────────────────────────────────────
+            AnimatedVisibility(
+                visible = searchVisible,
+                enter   = expandVertically(),
+                exit    = shrinkVertically(),
+            ) {
+                OutlinedTextField(
+                    value         = uiState.searchQuery,
+                    onValueChange = viewModel::setSearchQuery,
+                    placeholder   = {
+                        Text(
+                            stringResource(R.string.home_search_hint),
+                            color = TextMuted,
+                        )
+                    },
+                    singleLine    = true,
+                    leadingIcon   = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted)
+                    },
+                    trailingIcon  = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Icons.Default.Clear, "Clear search", tint = TextMuted)
+                            }
+                        }
+                    },
+                    colors   = cleanthesOutlinedTextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
+            // ── Category chips ────────────────────────────────────────────────
+            LazyRow(
+                contentPadding        = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier              = Modifier.padding(vertical = 8.dp),
+            ) {
+                val allCategories = listOf("All") + uiState.categories
+                items(allCategories) { category ->
+                    val selected = uiState.selectedCategory == category
+                    FilterChip(
+                        selected = selected,
+                        onClick  = { viewModel.setCategory(category) },
+                        label    = { Text(category) },
+                        colors   = FilterChipDefaults.filterChipColors(
+                            containerColor         = SurfaceElevated,
+                            labelColor             = TextSecondary,
+                            selectedContainerColor = GoldPrimary,
+                            selectedLabelColor     = OnGold,
+                        ),
+                        border   = FilterChipDefaults.filterChipBorder(
+                            enabled             = true,
+                            selected            = selected,
+                            borderColor         = SurfaceModal,
+                            selectedBorderColor = Color.Transparent,
+                        ),
+                    )
+                }
+            }
+
+            HorizontalDivider(color = SurfaceModal)
+
+            // ── List / empty / loading ────────────────────────────────────────
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(
+                            color    = GoldPrimary,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    uiState.filteredEntries.isEmpty() -> {
+                        EmptyState(modifier = Modifier.align(Alignment.Center))
+                    }
+                    else -> {
+                        LazyColumn(contentPadding = PaddingValues(bottom = 88.dp)) {
+                            items(
+                                items = uiState.filteredEntries,
+                                key   = { it.id },
+                            ) { entry ->
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { value ->
+                                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                                            // Screen-level scope — survives item leaving composition
+                                            scope.launch {
+                                                viewModel.onEntrySwipedToDelete(entry.id)
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message     = "\"${entry.title}\" deleted",
+                                                    actionLabel = "UNDO",
+                                                    duration    = SnackbarDuration.Long,
+                                                )
+                                                when (result) {
+                                                    SnackbarResult.ActionPerformed ->
+                                                        viewModel.undoDelete(entry.id)
+                                                    SnackbarResult.Dismissed ->
+                                                        viewModel.confirmDelete(entry.id)
+                                                }
+                                            }
+                                            true
+                                        } else false
+                                    }
+                                )
+
+                                SwipeToDismissBox(
+                                    state                       = dismissState,
+                                    enableDismissFromStartToEnd = false,
+                                    enableDismissFromEndToStart = true,
+                                    backgroundContent           = { SwipeDeleteBackground(dismissState) },
+                                ) {
+                                    EntryCard(
+                                        entry        = entry,
+                                        onEntryClick = onEntryClick,
+                                        onCopyClick  = onCopyPassword,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Composable primitives ─────────────────────────────────────────────────────
+
+@Composable
+private fun HomeToolbar(
+    entryCount:    Int,
+    searchVisible: Boolean,
+    onSearchToggle: () -> Unit,
+    onSettings:    () -> Unit,
+    onLock:        () -> Unit,
+) {
+    Row(
+        modifier          = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+        ) {
+            Text(
+                text          = stringResource(R.string.app_name).uppercase(),
+                fontSize      = 22.sp,
+                fontWeight    = FontWeight.Black,
+                letterSpacing = 0.1.em,
+                color         = TextPrimary,
+            )
+            if (entryCount > 0) {
+                Text(
+                    text  = "$entryCount ${if (entryCount == 1) "entry" else "entries"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary.copy(alpha = 0.6f),
+                )
+            }
+        }
+        IconButton(onClick = onSearchToggle) {
+            Icon(
+                imageVector        = if (searchVisible) Icons.Default.Close else Icons.Default.Search,
+                contentDescription = if (searchVisible) "Close search" else "Search",
+                tint               = GoldPrimary,
+            )
+        }
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = GoldPrimary)
+        }
+        IconButton(onClick = onLock) {
+            Icon(Icons.Default.Lock, contentDescription = "Lock vault", tint = GoldPrimary)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeDeleteBackground(state: SwipeToDismissBoxState) {
+    val isActive = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
+    Box(
+        modifier          = Modifier
+            .fillMaxSize()
+            .background(if (isActive) Color(0xFFB71C1C) else Color.Transparent)
+            .padding(end = 20.dp),
+        contentAlignment  = Alignment.CenterEnd,
+    ) {
+        if (isActive) {
+            Icon(
+                imageVector        = Icons.Default.Delete,
+                contentDescription = "Delete",
+                tint               = Color.White,
+                modifier           = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun EntryCard(
+    entry:       VaultEntry,
+    onEntryClick: (VaultEntry) -> Unit,
+    onCopyClick:  (String) -> Unit,
+    modifier:    Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onEntryClick(entry) },
+        shape    = RoundedCornerShape(16.dp),
+        colors   = CardDefaults.cardColors(containerColor = SurfaceElevated),
+        border   = BorderStroke(1.dp, SurfaceModal),
+    ) {
+        Row(
+            modifier          = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Avatar
+            Box(modifier = Modifier.size(44.dp)) {
+                Box(
+                    modifier         = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(avatarColor(entry)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text       = entry.title.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                        color      = Color.White,
+                        fontSize   = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                // TOTP indicator dot
+                if (entry.hasTOTP()) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .align(Alignment.TopEnd)
+                            .clip(CircleShape)
+                            .background(GoldBright)
+                            .then(
+                                Modifier.clip(CircleShape)
+                            ),
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text     = entry.title,
+                    style    = MaterialTheme.typography.titleMedium,
+                    color    = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text     = entry.username ?: "",
+                    style    = MaterialTheme.typography.bodyMedium,
+                    color    = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            IconButton(onClick = { onCopyClick(entry.encryptedPassword ?: "") }) {
+                Icon(
+                    imageVector        = Icons.Default.ContentCopy,
+                    contentDescription = "Copy password",
+                    tint               = GoldPrimary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier            = modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            imageVector        = Icons.Default.Lock,
+            contentDescription = null,
+            tint               = GoldPrimary.copy(alpha = 0.2f),
+            modifier           = Modifier.size(80.dp),
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text      = stringResource(R.string.home_empty_title),
+            style     = MaterialTheme.typography.titleMedium,
+            color     = TextPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text      = stringResource(R.string.home_empty_subtitle),
+            style     = MaterialTheme.typography.bodyMedium,
+            color     = TextSecondary.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+// Category avatar color — mirrors VaultEntryViewHolder.categoryColor()
+private fun avatarColor(entry: VaultEntry): Color {
+    if (entry.isFavorite) return GoldBright
+    val palette = listOf(
+        Color(0xFF2E86AB),
+        Color(0xFFA23B72),
+        Color(0xFFF18F01),
+        Color(0xFF3DAA6E),
+    )
+    return palette[Math.abs(entry.category.hashCode()) % palette.size]
 }
