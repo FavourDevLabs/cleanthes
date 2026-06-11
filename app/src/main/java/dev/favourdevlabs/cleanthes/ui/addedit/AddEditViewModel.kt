@@ -11,7 +11,6 @@ import dev.favourdevlabs.cleanthes.security.TOTPGenerator
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 import dev.favourdevlabs.cleanthes.utils.PasswordGenerator
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed interface AddEditEvent {
@@ -75,7 +73,7 @@ class AddEditViewModel @Inject constructor(
                 val key = sessionManager.getSessionKey() ?: run {
                     _events.send(AddEditEvent.NavigateBack); return@launch
                 }
-                val entry = withContext(Dispatchers.IO) { getVaultEntry(entryId, key) }
+                val entry = getVaultEntry(entryId, key)
                 if (entry == null) { _events.send(AddEditEvent.NavigateBack); return@launch }
                 existingEntry = entry
                 _uiState.update {
@@ -179,32 +177,29 @@ class AddEditViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    if (s.isEditMode && existingEntry != null) {
-                        existingEntry!!.apply {
-                            this.title         = title
-                            this.username      = username
-                            this.website       = s.website.trim().ifEmpty { null }
-                            this.category      = s.category
-                            this.notes         = s.notes.trim().ifEmpty { null }
-                            this.isFavorite    = s.isFavorite
-                            this.totpSecret    = finalTotp
-                            this.totpIssuer    = finalIssuer
-                            this.totpAlgorithm = s.totpAlgorithm
-                            this.totpDigits    = s.totpDigits
-                            this.totpPeriod    = s.totpPeriod
-                        }
-                        saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(existingEntry!!, password, key))
-                    } else {
-                        saveVaultEntry(SaveVaultEntryUseCase.Params.New(
-                            title, username, password,
-                            s.website.trim().ifEmpty { null },
-                            s.category,
-                            s.notes.trim().ifEmpty { null },
-                            s.isFavorite, finalTotp, finalIssuer,
-                            s.totpDigits, s.totpPeriod, s.totpAlgorithm, key,
-                        ))
-                    }
+                if (s.isEditMode && existingEntry != null) {
+                    val entry = existingEntry!!
+                    entry.title         = title
+                    entry.username      = username
+                    entry.website       = s.website.trim().ifEmpty { null }
+                    entry.category      = s.category
+                    entry.notes         = s.notes.trim().ifEmpty { null }
+                    entry.isFavorite    = s.isFavorite
+                    entry.totpSecret    = finalTotp
+                    entry.totpIssuer    = finalIssuer
+                    entry.totpAlgorithm = s.totpAlgorithm
+                    entry.totpDigits    = s.totpDigits
+                    entry.totpPeriod    = s.totpPeriod
+                    saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(entry, password, key))
+                } else {
+                    saveVaultEntry(SaveVaultEntryUseCase.Params.New(
+                        title, username, password,
+                        s.website.trim().ifEmpty { null },
+                        s.category,
+                        s.notes.trim().ifEmpty { null },
+                        s.isFavorite, finalTotp, finalIssuer,
+                        s.totpDigits, s.totpPeriod, s.totpAlgorithm, key,
+                    ))
                 }
                 _events.send(AddEditEvent.NavigateBack)
             } catch (_: Exception) {
@@ -217,7 +212,7 @@ class AddEditViewModel @Inject constructor(
         val entry = existingEntry ?: return
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { deleteVaultEntry(entry.id) }
+                deleteVaultEntry(entry.id)
                 _events.send(AddEditEvent.NavigateBack)
             } catch (_: Exception) {
                 _uiState.update { it.copy(showDeleteDialog = false, errorMessage = "Failed to delete entry.") }

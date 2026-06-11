@@ -14,6 +14,11 @@ import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 import javax.inject.Inject
 
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+
 @AndroidEntryPoint
 class CleanthesAutofillService : AutofillService() {
 
@@ -85,7 +90,10 @@ class CleanthesAutofillService : AutofillService() {
 
         if (username != null && password != null) {
             try {
-                repository.addEntry(key, username, password, key, "Autofill", null, false, secretKey)
+                @OptIn(DelicateCoroutinesApi::class)
+                GlobalScope.launch(Dispatchers.IO) {
+                    repository.addEntry(key, username, password, key, "Autofill", null, false, secretKey)
+                }
             } catch (_: Exception) {}
         }
         callback.onSuccess()

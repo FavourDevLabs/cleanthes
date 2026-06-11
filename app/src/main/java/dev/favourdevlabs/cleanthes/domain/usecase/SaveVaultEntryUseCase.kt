@@ -33,7 +33,7 @@ class SaveVaultEntryUseCase @Inject constructor(
     }
 
     @Throws(Exception::class)
-    operator fun invoke(params: Params): Long = when (params) {
+    suspend operator fun invoke(params: Params): Long = when (params) {
         is Params.New  -> repository.addEntry(
             params.title, params.username, params.plainPassword,
             params.website, params.category, params.notes,

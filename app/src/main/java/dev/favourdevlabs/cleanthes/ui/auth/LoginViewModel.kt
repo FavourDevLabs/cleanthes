@@ -1,7 +1,6 @@
 package dev.favourdevlabs.cleanthes.ui.auth
 
 import android.app.Application
-import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -10,7 +9,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVaultUseCase
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,8 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal const val MAX_ATTEMPTS             = 5
 internal const val LOCKOUT_DURATION_SECONDS = 30
@@ -145,16 +144,15 @@ class LoginViewModel @Inject constructor(
     fun onBiometricError(message: String) =
         _uiState.update { it.copy(isAuthenticating = false, errorMessage = message) }
 
-private suspend fun deriveKeyAndNavigate(masterPassword: String?, fromBiometric: Boolean) {
+
+        private suspend fun deriveKeyAndNavigate(masterPassword: String?, fromBiometric: Boolean) {
         try {
-            withContext(Dispatchers.IO) {
-                val encSalt = storedEncSalt ?: throw IllegalStateException("Salt missing")
-                val params  = if (fromBiometric)
-                    UnlockVaultUseCase.Params.Biometric(storedBiometricSecret!!, encSalt)
-                else
-                    UnlockVaultUseCase.Params.Password(masterPassword!!, encSalt)
-                unlockVault(params)
-            }
+            val encSalt = storedEncSalt ?: throw IllegalStateException("Salt missing")
+            val params  = if (fromBiometric)
+                UnlockVaultUseCase.Params.Biometric(storedBiometricSecret!!, encSalt)
+            else
+                UnlockVaultUseCase.Params.Password(masterPassword!!, encSalt)
+            unlockVault(params)
             _events.send(LoginEvent.NavigateToHome)
         } catch (_: Exception) {
             _uiState.update {
@@ -164,7 +162,7 @@ private suspend fun deriveKeyAndNavigate(masterPassword: String?, fromBiometric:
         }
     }
 
-        private fun handleFailedAttempt() {
+       private fun handleFailedAttempt() {
         failedAttempts++
         _uiState.update {
             it.copy(

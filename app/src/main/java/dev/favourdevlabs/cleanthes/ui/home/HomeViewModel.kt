@@ -5,13 +5,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntryUseCase
@@ -51,7 +49,7 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-   fun loadEntries() {
+    fun loadEntries() {
         val key = sessionManager.getSessionKey() ?: run {
             _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
             return
@@ -59,7 +57,7 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { getVaultEntries(key) }
+                val result = getVaultEntries(key)
                 _uiState.update {
                     it.copy(
                         isLoading  = false,
@@ -74,9 +72,9 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-    } 
+    }
 
-    fun setSearchQuery(query: String) =
+       fun setSearchQuery(query: String) =
         _uiState.update { it.copy(searchQuery = query.trim()) }
 
     fun setCategory(category: String) =
@@ -88,32 +86,30 @@ class HomeViewModel @Inject constructor(
     fun undoDelete(entryId: Long) =
         _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
 
-   fun confirmDelete(entryId: Long) {
+        fun confirmDelete(entryId: Long) {
         _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { deleteVaultEntry(entryId) }
+                deleteVaultEntry(entryId)
                 loadEntries()
             } catch (_: Exception) {
                 _uiState.update { it.copy(errorMessage = "Failed to delete entry.") }
             }
         }
-    } 
+    }
 
-    fun clearError() = _uiState.update { it.copy(errorMessage = null) }
+       fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
    fun toggleFavorite(entry: VaultEntry, plainPassword: String) {
         val key = sessionManager.getSessionKey() ?: return
         entry.isFavorite = !entry.isFavorite
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(entry, plainPassword, key))
-                }
+                saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(entry, plainPassword, key))
                 loadEntries()
             } catch (_: Exception) {
                 _uiState.update { it.copy(errorMessage = "Failed to update entry.") }
             }
         }
-    } 
+    }
 }

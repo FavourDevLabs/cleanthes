@@ -13,8 +13,8 @@ class GetVaultEntriesUseCase @Inject constructor(
         val categories: List<String>,
     )
 
-    @Throws(Exception::class)
-    operator fun invoke(key: SecretKey): Result = Result(
+@Throws(Exception::class)
+    suspend operator fun invoke(key: SecretKey): Result = Result(
         entries    = repository.getAllEntries(key),
         categories = repository.getAllCategories(),
     )

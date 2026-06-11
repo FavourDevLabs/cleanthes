@@ -9,6 +9,6 @@ class GetVaultEntryUseCase @Inject constructor(
     private val repository: VaultRepository,
 ) {
     @Throws(Exception::class)
-    operator fun invoke(id: Long, key: SecretKey): VaultEntry? =
+    suspend operator fun invoke(id: Long, key: SecretKey): VaultEntry? =
         repository.getEntryById(id, key)
 }

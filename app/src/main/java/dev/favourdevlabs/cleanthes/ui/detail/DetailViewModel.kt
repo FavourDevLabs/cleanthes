@@ -7,7 +7,6 @@ import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.security.TOTPGenerator
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class DetailUiState(
     val isLoading: Boolean = true,
@@ -59,7 +59,7 @@ class DetailViewModel @Inject constructor(
                     _uiState.update { it.copy(shouldFinish = true) }
                     return@launch
                 }
-                val entry = withContext(Dispatchers.IO) { getVaultEntry(entryId, key) }
+                val entry = getVaultEntry(entryId, key)
                 
                 if (entry == null) {
                     _uiState.update { it.copy(shouldFinish = true) }

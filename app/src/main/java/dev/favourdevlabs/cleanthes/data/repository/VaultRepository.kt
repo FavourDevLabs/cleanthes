@@ -3,6 +3,8 @@ package dev.favourdevlabs.cleanthes.data.repository
 import dev.favourdevlabs.cleanthes.data.db.VaultDao
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.security.CryptoManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.crypto.SecretKey
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,7 +13,7 @@ import javax.inject.Singleton
 class VaultRepository @Inject constructor(private val vaultDao: VaultDao) {
 
     @Throws(Exception::class)
-    fun addEntry(
+    suspend fun addEntry(
         title: String, userName: String, plainPassword: String,
         website: String?, category: String, notes: String?,
         isFavorite: Boolean, key: SecretKey
@@ -21,14 +23,14 @@ class VaultRepository @Inject constructor(private val vaultDao: VaultDao) {
     )
 
     @Throws(Exception::class)
-    fun addEntry(
+    suspend fun addEntry(
         title: String, userName: String, plainPassword: String,
         website: String?, category: String, notes: String?,
         isFavorite: Boolean,
         plainTotpSecret: String?, totpIssuer: String?,
         totpDigits: Int, totpPeriod: Int, totpAlgorithm: String?,
         key: SecretKey
-    ): Long {
+    ): Long = withContext(Dispatchers.IO) {
         val encPwd  = CryptoManager.encrypt(plainPassword, key)
         val encTotp = if (!plainTotpSecret.isNullOrEmpty())
             CryptoManager.encrypt(plainTotpSecret, key) else null
@@ -52,43 +54,52 @@ class VaultRepository @Inject constructor(private val vaultDao: VaultDao) {
         )
         val id = vaultDao.insert(entry)
         if (id != -1L) entry.id = id
-        return id
+        id
     }
 
     @Throws(Exception::class)
-    fun updateEntry(entry: VaultEntry, plainPassword: String, key: SecretKey): Int {
-        entry.encryptedPassword = CryptoManager.encrypt(plainPassword, key)
-        entry.totpSecret = if (!entry.totpSecret.isNullOrEmpty())
-            CryptoManager.encrypt(entry.totpSecret!!, key) else null
-        entry.updatedAt = System.currentTimeMillis()
-        return vaultDao.update(entry)
+    suspend fun updateEntry(entry: VaultEntry, plainPassword: String, key: SecretKey): Int =
+        withContext(Dispatchers.IO) {
+            entry.encryptedPassword = CryptoManager.encrypt(plainPassword, key)
+            entry.totpSecret = if (!entry.totpSecret.isNullOrEmpty())
+                CryptoManager.encrypt(entry.totpSecret!!, key) else null
+            entry.updatedAt = System.currentTimeMillis()
+            vaultDao.update(entry)
+        }
+
+    suspend fun deleteEntry(id: Long): Int = withContext(Dispatchers.IO) {
+        vaultDao.deleteById(id)
     }
 
-    fun deleteEntry(id: Long): Int = vaultDao.deleteById(id)
-    fun wipeVault(): Int           = vaultDao.deleteAll()
+    suspend fun wipeVault(): Int = withContext(Dispatchers.IO) {
+        vaultDao.deleteAll()
+    }
 
     @Throws(Exception::class)
-    fun getAllEntries(key: SecretKey): List<VaultEntry> =
-        decryptAll(vaultDao.getAllEntries(), key)
+    suspend fun getAllEntries(key: SecretKey): List<VaultEntry> =
+        withContext(Dispatchers.IO) { decryptAll(vaultDao.getAllEntries(), key) }
 
     @Throws(Exception::class)
-    fun getEntryById(id: Long, key: SecretKey): VaultEntry? =
-        vaultDao.getEntryById(id)?.let { decrypt(it, key) }
+    suspend fun getEntryById(id: Long, key: SecretKey): VaultEntry? =
+        withContext(Dispatchers.IO) { vaultDao.getEntryById(id)?.let { decrypt(it, key) } }
 
     @Throws(Exception::class)
-    fun searchEntries(query: String, key: SecretKey): List<VaultEntry> =
-        decryptAll(vaultDao.searchEntries(query), key)
+    suspend fun searchEntries(query: String, key: SecretKey): List<VaultEntry> =
+        withContext(Dispatchers.IO) { decryptAll(vaultDao.searchEntries(query), key) }
 
     @Throws(Exception::class)
-    fun getEntriesByCategory(cat: String, key: SecretKey): List<VaultEntry> =
-        decryptAll(vaultDao.getEntriesByCategory(cat), key)
+    suspend fun getEntriesByCategory(cat: String, key: SecretKey): List<VaultEntry> =
+        withContext(Dispatchers.IO) { decryptAll(vaultDao.getEntriesByCategory(cat), key) }
 
     @Throws(Exception::class)
-    fun getFavoriteEntries(key: SecretKey): List<VaultEntry> =
-        decryptAll(vaultDao.getFavoriteEntries(), key)
+    suspend fun getFavoriteEntries(key: SecretKey): List<VaultEntry> =
+        withContext(Dispatchers.IO) { decryptAll(vaultDao.getFavoriteEntries(), key) }
 
-    fun getAllCategories(): List<String> = vaultDao.getAllCategories()
-    fun getEntryCount(): Int            = vaultDao.getEntryCount()
+    suspend fun getAllCategories(): List<String> =
+        withContext(Dispatchers.IO) { vaultDao.getAllCategories() }
+
+    suspend fun getEntryCount(): Int =
+        withContext(Dispatchers.IO) { vaultDao.getEntryCount() }
 
     @Throws(Exception::class)
     private fun decrypt(e: VaultEntry, key: SecretKey): VaultEntry {

@@ -5,6 +5,9 @@ import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 import javax.inject.Inject
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 class UnlockVaultUseCase @Inject constructor(
     private val sessionManager: SessionManager,
 ) {
@@ -14,7 +17,7 @@ class UnlockVaultUseCase @Inject constructor(
     }
 
     @Throws(Exception::class)
-    operator fun invoke(params: Params) {
+    suspend operator fun invoke(params: Params) = withContext(Dispatchers.IO) {
         val (source, encSalt) = when (params) {
             is Params.Password  -> params.masterPassword to params.encSalt
             is Params.Biometric -> params.biometricSecret to params.encSalt
