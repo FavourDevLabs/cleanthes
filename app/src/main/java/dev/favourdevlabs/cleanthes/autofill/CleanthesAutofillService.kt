@@ -3,6 +3,7 @@ package dev.favourdevlabs.cleanthes.autofill
 import android.app.PendingIntent
 import android.app.assist.AssistStructure
 import android.content.Intent
+import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.*
 import android.view.autofill.AutofillId
@@ -13,7 +14,6 @@ import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
 import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
 import javax.inject.Inject
-
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -55,21 +55,34 @@ class CleanthesAutofillService : AutofillService() {
             setTextViewText(R.id.autofill_label, "Cleanthes \u2014 tap to fill")
         }
 
-        val response = FillResponse.Builder()
-            .setAuthentication(
+        val responseBuilder = FillResponse.Builder()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val presentations = Presentations.Builder()
+                .setMenuPresentation(locked)
+                .build()
+            responseBuilder.setAuthentication(
                 arrayOf(parsed.usernameId, parsed.passwordId),
                 pending.intentSender,
-                locked
+                presentations,
             )
-            .setSaveInfo(
-                SaveInfo.Builder(
-                    SaveInfo.SAVE_DATA_TYPE_PASSWORD,
-                    arrayOf(parsed.usernameId, parsed.passwordId)
-                ).build()
+        } else {
+            @Suppress("DEPRECATION")
+            responseBuilder.setAuthentication(
+                arrayOf(parsed.usernameId, parsed.passwordId),
+                pending.intentSender,
+                locked,
             )
-            .build()
+        }
 
-        callback.onSuccess(response)
+        responseBuilder.setSaveInfo(
+            SaveInfo.Builder(
+                SaveInfo.SAVE_DATA_TYPE_PASSWORD,
+                arrayOf(parsed.usernameId, parsed.passwordId)
+            ).build()
+        )
+
+        callback.onSuccess(responseBuilder.build())
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
@@ -119,3 +132,4 @@ class CleanthesAutofillService : AutofillService() {
         return null
     }
 }
+

@@ -1,9 +1,11 @@
 package dev.favourdevlabs.cleanthes.autofill
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.service.autofill.Dataset
 import android.service.autofill.FillResponse
+import android.service.autofill.Presentations
 import android.view.WindowManager
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
@@ -86,10 +88,10 @@ class AutofillAuthActivity : AppCompatActivity() {
     }
 
     private fun deliver() {
-        val secretKey  = sessionManager.getSessionKey()
+        val secretKey   = sessionManager.getSessionKey()
             ?: run { setResult(RESULT_CANCELED); finish(); return }
-        val usernameId  = intent.getParcelableExtra<AutofillId>(EXTRA_USERNAME_ID)
-        val passwordId  = intent.getParcelableExtra<AutofillId>(EXTRA_PASSWORD_ID)
+        val usernameId  = getParcelableExtraCompat<AutofillId>(EXTRA_USERNAME_ID)
+        val passwordId  = getParcelableExtraCompat<AutofillId>(EXTRA_PASSWORD_ID)
         val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME)
         val webDomain   = intent.getStringExtra(EXTRA_WEB_DOMAIN)
         val lookupKey   = webDomain ?: packageName
@@ -104,14 +106,13 @@ class AutofillAuthActivity : AppCompatActivity() {
                 }
                 val response = FillResponse.Builder()
                 for (entry in matches) {
-                    val view = RemoteViews(packageName, R.layout.autofill_item).apply {
-                        setTextViewText(R.id.autofill_label, entry.username)
-                    }
                     response.addDataset(
-                        Dataset.Builder(view)
-                            .setValue(usernameId!!, AutofillValue.forText(entry.username), view)
-                            .setValue(passwordId!!, AutofillValue.forText(entry.encryptedPassword), view)
-                            .build()
+                        DatasetBuilder.build(
+                            this@AutofillAuthActivity,
+                            usernameId!!,
+                            passwordId!!,
+                            entry,
+                        )
                     )
                 }
                 sessionManager.refreshSession()
@@ -129,6 +130,14 @@ class AutofillAuthActivity : AppCompatActivity() {
         }
     }
 
+    private inline fun <reified T> getParcelableExtraCompat(key: String): T? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(key, T::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(key)
+        }
+
     private fun filter(entries: List<VaultEntry>, key: String?): List<VaultEntry> {
         if (key.isNullOrEmpty()) return emptyList()
         val lower = key.lowercase()
@@ -139,3 +148,4 @@ class AutofillAuthActivity : AppCompatActivity() {
         }
     }
 }
+
