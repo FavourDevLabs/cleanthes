@@ -98,6 +98,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:security"))
     implementation(project(":core:data"))
+    implementation(project(":core:domain"))
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.59")
