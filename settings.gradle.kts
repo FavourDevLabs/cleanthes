@@ -23,3 +23,4 @@ rootProject.name = "Cleanthes"
 include(":app")
 include(":core:common")
 include(":core:security")
+include(":core:data")

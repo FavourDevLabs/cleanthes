@@ -1,4 +1,4 @@
-package dev.favourdevlabs.cleanthes.di
+package dev.favourdevlabs.cleanthes.data.di
 
 import android.content.Context
 import dagger.Module
