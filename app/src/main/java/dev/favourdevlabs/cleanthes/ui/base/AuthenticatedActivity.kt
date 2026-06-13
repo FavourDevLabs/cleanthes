@@ -4,7 +4,7 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.ui.auth.LoginActivity
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import javax.inject.Inject
 
 @AndroidEntryPoint

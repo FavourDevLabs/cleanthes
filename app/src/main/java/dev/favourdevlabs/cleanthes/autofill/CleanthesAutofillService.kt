@@ -12,7 +12,7 @@ import android.widget.RemoteViews
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import javax.inject.Inject
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers

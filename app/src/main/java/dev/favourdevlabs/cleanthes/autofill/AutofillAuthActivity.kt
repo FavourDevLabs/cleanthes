@@ -25,7 +25,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

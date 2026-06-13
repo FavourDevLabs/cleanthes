@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVaultUseCase
 import dev.favourdevlabs.cleanthes.security.KeyDerivation

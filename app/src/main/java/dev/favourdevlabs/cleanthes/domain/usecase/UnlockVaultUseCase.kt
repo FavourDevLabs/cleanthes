@@ -2,7 +2,7 @@ package dev.favourdevlabs.cleanthes.domain.usecase
 
 import android.util.Base64
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import javax.inject.Inject
 
 import kotlinx.coroutines.Dispatchers

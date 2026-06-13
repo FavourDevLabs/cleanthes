@@ -4,7 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import dagger.hilt.android.HiltAndroidApp
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import dev.favourdevlabs.cleanthes.common.ClipboardHelper
 import javax.inject.Inject
 

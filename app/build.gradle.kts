@@ -96,6 +96,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
     implementation(project(":core:common"))
+    implementation(project(":core:security"))
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.59")

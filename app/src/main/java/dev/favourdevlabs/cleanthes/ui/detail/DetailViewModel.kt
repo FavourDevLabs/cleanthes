@@ -6,7 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.security.TOTPGenerator
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
-import dev.favourdevlabs.cleanthes.ui.auth.SessionManager
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

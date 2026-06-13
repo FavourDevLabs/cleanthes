@@ -1,4 +1,4 @@
-package dev.favourdevlabs.cleanthes.ui.auth
+package dev.favourdevlabs.cleanthes.security
 
 import javax.crypto.SecretKey
 import javax.inject.Inject
