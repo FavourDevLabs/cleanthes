@@ -1,10 +1,10 @@
 # Cleanthes
 > *"Guard it as Cleanthes guarded virtue."*
 
-A zero-knowledge AES-256-GCM encrypted password vault for Android.
+A zero-knowledge AES-256-GCM encrypted password vault for Android.  
 No cloud. No backdoors. No second chances.
 
-Named after Cleanthes of Assos (331-230 BC), Zeno's Stoic successor.
+Named after Cleanthes of Assos (331–230 BC), Zeno's Stoic successor.
 He worked nights as a water-carrier to fund his philosophy by day.
 The inner citadel is yours alone.
 
@@ -22,7 +22,7 @@ When you create a vault, this happens:
     310,000 rounds of PBKDF2 hashing
     (meets OWASP 2023 recommendations)
             ↓
-    An AES-256 encryption key (lives in RAM only, never saved to disk)
+    An AES-256 encryption key (lives in RAM only, never written to disk)
 
 When an entry is saved:
 
@@ -30,7 +30,7 @@ When an entry is saved:
             ↓
     AES-256-GCM encryption (unique random IV per entry)
             ↓
-    Stored in SQLite database as ciphertext
+    Stored in Room database as ciphertext
 
 Without the correct master password, the database is unreadable noise.
 
@@ -50,12 +50,12 @@ Without the correct master password, the database is unreadable noise.
 
 ---
 
-## Security guarantees
+## Security Guarantees
 
 - Nothing sensitive is written to disk in plaintext
 - No internet permission — the app makes zero network calls
 - No cloud sync, no analytics, no telemetry
-- Screenshots disabled on all screens (FLAG_SECURE)
+- Screenshots disabled on all screens (`FLAG_SECURE`)
 - Session auto-locks after 5 minutes of inactivity
 - 5 failed attempts triggers a 30-second lockout
 - Android backup disabled — vault excluded from phone backups
@@ -66,71 +66,70 @@ Without the correct master password, the database is unreadable noise.
 
 | Layer | Choice |
 |---|---|
-| Language | Java (Android SDK 21–34) |
-| Architecture | MVVM with ViewModel and LiveData |
-| Database | SQLite with raw SQL |
-| Encryption | AES-256-GCM via javax.crypto |
+| Language | Kotlin |
+| Architecture | MVVM — ViewModel, StateFlow, Coroutines |
+| Database | Room (SQLite) with WAL mode |
+| Encryption | AES-256-GCM via `javax.crypto` |
 | Key Derivation | PBKDF2WithHmacSHA256 (310,000 iterations) |
 | Secure Storage | EncryptedSharedPreferences + Android Keystore |
 | Biometrics | BiometricPrompt API |
-| UI | Material Components 3, ConstraintLayout |
+| Dependency Injection | Hilt |
+| UI | Jetpack Compose + Material 3 |
+| Autofill | Android Autofill Framework |
 
 ---
 
 ## Features
 
-- Zero-knowledge vault
+- Zero-knowledge vault — master password never leaves the device
 - AES-256-GCM encryption with unique IV per entry
-- Password strength meter (5-segment, real-time)
+- TOTP authenticator support (scan QR or paste Base32 secret)
+- Password strength meter (real-time, 5-segment)
 - FORGE — built-in password generator with configurable complexity
-- Category organisation with chip filter
-- Priority entry marking
 - Biometric unlock (fingerprint)
+- Android Autofill Service integration
+- Category organisation with filter
+- Priority entry marking
 - Session auto-lock with manual lock option
 - Swipe to delete with undo
 - Live search by title or username
-- Copy password or username from list and detail screen
+- Copy password or username to clipboard (auto-clears after 30 seconds)
 - Show/hide password toggle
 
 ---
 
 ## Project Structure
 
-    cleanthes/
-    |
-    +-- data/
-    |   +-- db/           SQLite schema and queries
-    |   +-- entities/     VaultEntry model
-    |   +-- repository/   Encrypts before write, decrypts after read
-    |
-    +-- security/
-    |   +-- CryptoManager.java    AES-256-GCM encrypt and decrypt
-    |   +-- KeyDerivation.java    PBKDF2 key derivation
-    |   +-- BiometricHelper.java  Fingerprint unlock
-    |
-    +-- ui/
-    |   +-- auth/      Setup, Login, SessionManager
-    |   +-- home/      Vault list, search, filter
-    |   +-- addedit/   Create and edit entries
-    |   +-- detail/    Read-only entry view
-    |
-    +-- utils/
-        +-- PasswordGenerator.java   FORGE password logic
+Cleanthes is organized as a multi-module Gradle project. Dependencies flow
+strictly downward — no module imports from a layer above it.
+
+    ├── app/                        Application shell, UI, Hilt entry point
+    │   ├── autofill/               Android Autofill Service
+    │   └── ui/                     All screens and ViewModels
+    │
+    ├── core/
+    │   ├── common/                 Shared utilities (ClipboardHelper, PasswordGenerator)
+    │   ├── security/               Cryptography, key derivation, session management
+    │   ├── data/                   Room database, DAO, repository
+    │   └── domain/                 Use cases — business logic coordination
+    │
+    └── build.gradle.kts            Project-level Gradle configuration
+
+Dependency graph:
+
+    app → core:domain → core:data → core:security
+                                  → core:common
+              └───────────────────→ core:security
 
 ---
 
 ## Build and Run
 
-**Requirements:** JDK 17+, Android SDK 34, device or emulator on API 21+
-
-**Android Studio (recommended):**
-1. Clone the repo and open the project folder in Android Studio
-2. Let Gradle sync
-3. Run on a device or emulator
+**Requirements:** JDK 17+, Android SDK 34, device or emulator on API 24+
 
 **Command line:**
 
-    git clone https://github.com/YOUR_USERNAME/cleanthes.git
+    git clone https://github.com/FavourDevLabs/cleanthes.git
     cd cleanthes
     ./gradlew assembleDebug
 
@@ -154,3 +153,4 @@ MIT — see LICENSE file
 ---
 
 Built by FavourDevLabs — https://favourdevlabs.dev
+
