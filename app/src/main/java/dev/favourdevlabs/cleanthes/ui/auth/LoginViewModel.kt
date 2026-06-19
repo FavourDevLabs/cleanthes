@@ -1,6 +1,7 @@
 package dev.favourdevlabs.cleanthes.ui.auth
 
 import android.app.Application
+import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -8,6 +9,7 @@ import androidx.security.crypto.MasterKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.security.SessionManager
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import dev.favourdevlabs.cleanthes.security.KeystoreManager
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVaultUseCase
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.channels.Channel
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.crypto.Cipher
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,8 +29,8 @@ internal const val MAX_ATTEMPTS             = 5
 internal const val LOCKOUT_DURATION_SECONDS = 30
 
 sealed interface LoginEvent {
-    data object NavigateToHome   : LoginEvent
-    data object TriggerBiometric : LoginEvent
+    data object NavigateToHome : LoginEvent
+    data class TriggerBiometric(val cipher: Cipher) : LoginEvent
 }
 
 data class LoginUiState(
@@ -56,11 +59,13 @@ class LoginViewModel @Inject constructor(
     private val _events = Channel<LoginEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private var storedAuthSalt:        String? = null
-    private var storedEncSalt:         String? = null
-    private var storedMasterHash:      String? = null
-    private var storedBiometricSecret: String? = null
-    private var failedAttempts                  = 0
+    private var storedAuthSalt:                 String? = null
+    private var storedEncSalt:                  String? = null
+    private var storedMasterHash:               String? = null
+    private var storedWrappedVaultKeyPassword:  String? = null
+    private var storedWrappedVaultKeyBiometric: String? = null
+    private var storedBiometricIv:              String? = null
+    private var failedAttempts                          = 0
 
     init { loadCredentials() }
 
@@ -78,14 +83,17 @@ class LoginViewModel @Inject constructor(
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
 
-            storedAuthSalt        = prefs.getString(KEY_AUTH_SALT,        null)
-            storedEncSalt         = prefs.getString(KEY_ENC_SALT,         null)
-            storedMasterHash      = prefs.getString(KEY_MASTER_HASH,      null)
-            storedBiometricSecret = prefs.getString(KEY_BIOMETRIC_SECRET, null)
+            storedAuthSalt                 = prefs.getString(KEY_AUTH_SALT, null)
+            storedEncSalt                  = prefs.getString(KEY_ENC_SALT, null)
+            storedMasterHash               = prefs.getString(KEY_MASTER_HASH, null)
+            storedWrappedVaultKeyPassword  = prefs.getString(KEY_WRAPPED_VAULT_KEY_PASSWORD, null)
+            storedWrappedVaultKeyBiometric = prefs.getString(KEY_WRAPPED_VAULT_KEY_BIOMETRIC, null)
+            storedBiometricIv              = prefs.getString(KEY_BIOMETRIC_IV, null)
 
             val biometricEnabled   = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
             val biometricAvailable = biometricEnabled &&
-                BiometricHelper.isBiometricAvailable(getApplication())
+                BiometricHelper.isBiometricAvailable(getApplication()) &&
+                KeystoreManager.biometricKeyExists()
 
             _uiState.update { it.copy(showBiometricSection = biometricAvailable) }
         } catch (_: Exception) { }
@@ -117,7 +125,7 @@ class LoginViewModel @Inject constructor(
             }
             if (correct) {
                 failedAttempts = 0
-                deriveKeyAndNavigate(attempt, fromBiometric = false)
+                unlockWithPassword(attempt)
             } else {
                 _uiState.update { it.copy(isLoading = false) }
                 handleFailedAttempt()
@@ -127,33 +135,11 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun requestBiometricAuth() {
-        val state = _uiState.value
-        if (state.isAuthenticating || state.isLoading || state.isLockedOut) return
-        _uiState.update { it.copy(isAuthenticating = true) }
-        viewModelScope.launch { _events.send(LoginEvent.TriggerBiometric) }
-    }
-
-    fun onBiometricSuccess() {
-        _uiState.update { it.copy(isAuthenticating = false, isLoading = true) }
-        viewModelScope.launch { deriveKeyAndNavigate(null, fromBiometric = true) }
-    }
-
-    fun onBiometricFailure() =
-        _uiState.update { it.copy(isAuthenticating = false) }
-
-    fun onBiometricError(message: String) =
-        _uiState.update { it.copy(isAuthenticating = false, errorMessage = message) }
-
-
-        private suspend fun deriveKeyAndNavigate(masterPassword: String?, fromBiometric: Boolean) {
+    private suspend fun unlockWithPassword(masterPassword: String) {
         try {
-            val encSalt = storedEncSalt ?: throw IllegalStateException("Salt missing")
-            val params  = if (fromBiometric)
-                UnlockVaultUseCase.Params.Biometric(storedBiometricSecret!!, encSalt)
-            else
-                UnlockVaultUseCase.Params.Password(masterPassword!!, encSalt)
-            unlockVault(params)
+            val encSalt         = storedEncSalt ?: throw IllegalStateException("Salt missing")
+            val wrappedVaultKey = storedWrappedVaultKeyPassword ?: throw IllegalStateException("Vault key missing")
+            unlockVault(UnlockVaultUseCase.Params.Password(masterPassword, encSalt, wrappedVaultKey))
             _events.send(LoginEvent.NavigateToHome)
         } catch (_: Exception) {
             _uiState.update {
@@ -163,7 +149,57 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-       private fun handleFailedAttempt() {
+    fun requestBiometricAuth() {
+        val state = _uiState.value
+        if (state.isAuthenticating || state.isLoading || state.isLockedOut) return
+
+        val ivB64 = storedBiometricIv
+        if (ivB64 == null) {
+            _uiState.update { it.copy(errorMessage = "Biometric data missing") }
+            return
+        }
+
+        try {
+            val iv     = Base64.decode(ivB64, Base64.NO_WRAP)
+            val cipher = KeystoreManager.getDecryptCipher(iv)
+            _uiState.update { it.copy(isAuthenticating = true) }
+            viewModelScope.launch { _events.send(LoginEvent.TriggerBiometric(cipher)) }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Biometric unlock unavailable. Use your password.") }
+        }
+    }
+
+    fun onBiometricSuccess(unlockedCipher: Cipher) {
+        _uiState.update { it.copy(isAuthenticating = false, isLoading = true) }
+        viewModelScope.launch { unlockWithBiometric(unlockedCipher) }
+    }
+
+    private suspend fun unlockWithBiometric(unlockedCipher: Cipher) {
+        try {
+            val wrappedVaultKeyB64 = storedWrappedVaultKeyBiometric
+                ?: throw IllegalStateException("Vault key missing")
+            val vaultKey = withContext(Dispatchers.IO) {
+                val wrappedBytes = Base64.decode(wrappedVaultKeyB64, Base64.NO_WRAP)
+                val rawKeyBytes  = unlockedCipher.doFinal(wrappedBytes)
+                javax.crypto.spec.SecretKeySpec(rawKeyBytes, "AES")
+            }
+            unlockVault(UnlockVaultUseCase.Params.Biometric(vaultKey))
+            _events.send(LoginEvent.NavigateToHome)
+        } catch (_: Exception) {
+            _uiState.update {
+                it.copy(isLoading = false, isAuthenticating = false,
+                    errorMessage = "An error occurred. Please try again.")
+            }
+        }
+    }
+
+    fun onBiometricFailure() =
+        _uiState.update { it.copy(isAuthenticating = false) }
+
+    fun onBiometricError(message: String) =
+        _uiState.update { it.copy(isAuthenticating = false, errorMessage = message) }
+
+    private fun handleFailedAttempt() {
         failedAttempts++
         _uiState.update {
             it.copy(

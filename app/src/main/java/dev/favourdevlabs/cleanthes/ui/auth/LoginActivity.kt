@@ -39,6 +39,7 @@ import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
 import dev.favourdevlabs.cleanthes.ui.home.HomeActivity
 import dev.favourdevlabs.cleanthes.ui.theme.*
 import kotlinx.coroutines.launch
+import javax.crypto.Cipher
 
 @AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
@@ -61,7 +62,7 @@ class LoginActivity : AppCompatActivity() {
                             )
                             finish()
                         }
-                        LoginEvent.TriggerBiometric -> triggerBiometric()
+                        is LoginEvent.TriggerBiometric -> triggerBiometric(event.cipher)
                     }
                 }
             }
@@ -75,11 +76,12 @@ class LoginActivity : AppCompatActivity() {
     }
 
     // Biometric stays in Activity — BiometricPrompt requires FragmentActivity context
-    private fun triggerBiometric() {
+    private fun triggerBiometric(cipher: Cipher) {
         BiometricHelper.authenticate(
             this,
+            cipher,
             object : BiometricHelper.AuthCallback {
-                override fun onSuccess()                    = viewModel.onBiometricSuccess()
+                override fun onSuccess(cipher: Cipher)                    = viewModel.onBiometricSuccess(cipher)
                 override fun onFailure()                    = viewModel.onBiometricFailure()
                 override fun onError(errorMessage: String) = viewModel.onBiometricError(errorMessage)
             }

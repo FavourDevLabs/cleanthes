@@ -8,31 +8,36 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import javax.crypto.Cipher
 
 object BiometricHelper {
 
     interface AuthCallback {
-        fun onSuccess()
+        fun onSuccess(cipher: Cipher)
         fun onFailure()
         fun onError(errorMessage: String)
     }
 
     fun isBiometricAvailable(context: Context): Boolean {
         val result = BiometricManager.from(context).canAuthenticate(
-            BiometricManager.Authenticators.BIOMETRIC_STRONG or
-            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
         )
         return result == BiometricManager.BIOMETRIC_SUCCESS
     }
 
-    fun authenticate(activity: FragmentActivity, callback: AuthCallback) {
+    fun authenticate(activity: FragmentActivity, cipher: Cipher, callback: AuthCallback) {
         val prompt = BiometricPrompt(
             activity,
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
-                    callback.onSuccess()
+                    val unlockedCipher = result.cryptoObject?.cipher
+                    if (unlockedCipher != null) {
+                        callback.onSuccess(unlockedCipher)
+                    } else {
+                        callback.onError("Cryptographic binding failed")
+                    }
                 }
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
@@ -49,13 +54,11 @@ object BiometricHelper {
             .setTitle("The Inner Citadel")
             .setSubtitle("The disciplined alone may enter.")
             .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                BiometricManager.Authenticators.BIOMETRIC_STRONG
             )
             .build()
 
-        android.util.Log.d("CLEANTHES_BIO", "biometricPrompt.authenticate() about to fire")
-        prompt.authenticate(promptInfo)
+        prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
     }
 
     fun enrollBiometrics(context: Context) {
