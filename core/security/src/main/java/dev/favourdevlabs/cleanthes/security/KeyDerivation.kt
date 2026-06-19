@@ -56,4 +56,34 @@ object KeyDerivation {
 
     fun generateSalt(): ByteArray =
         ByteArray(SALT_LENGTH_BYTES).also { SecureRandom().nextBytes(it) }
+
+    /**
+     * Generates a random 256-bit AES key — used as the single vault data-encryption key.
+     * This key never changes after setup; both password and biometric unlock paths
+     * must independently arrive at this same key via wrapping/unwrapping.
+     */
+    fun generateVaultKey(): SecretKey {
+        val keyBytes = ByteArray(32) // 256 bits
+        SecureRandom().nextBytes(keyBytes)
+        return SecretKeySpec(keyBytes, "AES")
+    }
+
+    /**
+     * Wraps (encrypts) a key's raw bytes using another key, via AES-GCM.
+     * Used to envelope-encrypt the vault key under a password-derived key
+     * or a Keystore-backed hardware key.
+     */
+    @Throws(Exception::class)
+    fun wrapKey(keyToWrap: SecretKey, wrappingKey: SecretKey): String =
+        CryptoManager.encryptBytes(keyToWrap.encoded, wrappingKey)
+
+    /**
+     * Unwraps (decrypts) a previously wrapped key's raw bytes, reconstructing
+     * the original SecretKey.
+     */
+    @Throws(Exception::class)
+    fun unwrapKey(wrappedKeyB64: String, wrappingKey: SecretKey): SecretKey {
+        val rawBytes = CryptoManager.decryptBytes(wrappedKeyB64, wrappingKey)
+        return SecretKeySpec(rawBytes, "AES")
+    }
 }
