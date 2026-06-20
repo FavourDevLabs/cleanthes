@@ -21,6 +21,10 @@ import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 
+import dev.favourdevlabs.cleanthes.security.SessionManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
 // Package-level — shared with LoginActivity (same package, no qualification needed)
 internal const val PREFS_NAME            = "vault_secure_prefs"
 internal const val KEY_VAULT_EXISTS      = "vault_exists"
@@ -73,7 +77,11 @@ private fun computeStrengthScore(password: String): Int {
     return score
 }
 
-class SetupViewModel(app: Application) : AndroidViewModel(app) {
+@HiltViewModel
+class SetupViewModel @Inject constructor(
+    app: Application,
+    private val sessionManager: SessionManager,
+) : AndroidViewModel(app) {
 
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
@@ -221,6 +229,7 @@ class SetupViewModel(app: Application) : AndroidViewModel(app) {
                         .putString(KEY_BIOMETRIC_IV,                biometricIv)
                         .apply()
                 }
+                sessionManager.setSessionKey(vaultKey)
                 pendingVaultKey = null
                 _navEvents.send(SetupNavEvent.NavigateToHome)
             } catch (e: Exception) {
@@ -241,7 +250,11 @@ class SetupViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun skipBiometricEnrollment() {
+        val vaultKey = pendingVaultKey
         pendingVaultKey = null
+        if (vaultKey != null) {
+            sessionManager.setSessionKey(vaultKey)
+        }
         viewModelScope.launch { _navEvents.send(SetupNavEvent.NavigateToHome) }
     }
 }
