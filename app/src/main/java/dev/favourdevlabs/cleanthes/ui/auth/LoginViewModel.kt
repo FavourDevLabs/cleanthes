@@ -90,10 +90,15 @@ class LoginViewModel @Inject constructor(
             storedWrappedVaultKeyBiometric = prefs.getString(KEY_WRAPPED_VAULT_KEY_BIOMETRIC, null)
             storedBiometricIv              = prefs.getString(KEY_BIOMETRIC_IV, null)
 
-            val biometricEnabled   = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
-            val biometricAvailable = biometricEnabled &&
-                BiometricHelper.isBiometricAvailable(getApplication()) &&
-                KeystoreManager.biometricKeyExists()
+            val biometricEnabled    = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
+            val biometricHwAvail    = BiometricHelper.isBiometricAvailable(getApplication())
+            val biometricKeyExists  = KeystoreManager.biometricKeyExists()
+            val biometricAvailable  = biometricEnabled && biometricHwAvail && biometricKeyExists
+
+            android.util.Log.e(
+                "CLEANTHES_LOGIN",
+                "biometricEnabled=$biometricEnabled hwAvail=$biometricHwAvail keyExists=$biometricKeyExists"
+            )
 
             _uiState.update { it.copy(showBiometricSection = biometricAvailable) }
         } catch (_: Exception) { }
