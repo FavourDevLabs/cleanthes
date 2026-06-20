@@ -162,7 +162,8 @@ class SetupViewModel(app: Application) : AndroidViewModel(app) {
                     .apply()
             }
             _navEvents.send(SetupNavEvent.NavigateToHome)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("CLEANTHES_SETUP", "Setup failed", e)
             _uiState.update {
                 it.copy(isLoading = false, errorMessage = "Setup failed. Please try again.")
             }
