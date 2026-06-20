@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -180,18 +183,67 @@ private fun SetupScreen(viewModel: SetupViewModel) {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Forge Your Citadel",
+                text = "Your Inner Citadel",
                 style = MaterialTheme.typography.headlineLarge,
                 color = TextPrimary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Your master password cannot be recovered.\nChoose with the gravity it deserves.",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "memento mori",
+                style = MaterialTheme.typography.labelSmall,
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
+                letterSpacing = 0.2.em,
             )
+        }
+
+        // ── Warning card ──────────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .border(width = 1.dp, color = Warning, shape = RoundedCornerShape(8.dp))
+                .background(Warning.copy(alpha = 0.06f))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "NO RECOVERY. NO REGRETS.",
+                style = MaterialTheme.typography.labelMedium,
+                color = Warning,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "Lose this password and your data returns to the void — permanently.\n\n" +
+                    "This is not a flaw. It is a feature. It protects you from everyone, including us.\n\n" +
+                    "No backdoors. No support ticket. No second chance. Write it down. Lock it away.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+            )
+            HorizontalDivider(color = SurfaceModal, thickness = 1.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.onAcknowledgeToggle(!uiState.acknowledged) },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(
+                    checked = uiState.acknowledged,
+                    onCheckedChange = viewModel::onAcknowledgeToggle,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor   = Warning,
+                        uncheckedColor = TextMuted,
+                        checkmarkColor = OnGold,
+                    ),
+                )
+                Text(
+                    text = "I understand. There is no recovery.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
         }
 
         // ── Password + strength ───────────────────────────────────────────────
@@ -199,7 +251,7 @@ private fun SetupScreen(viewModel: SetupViewModel) {
             CleanthesPasswordField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = "Master Password",
+                label = "Guard the gate",
                 visible = uiState.passwordVisible,
                 onVisibilityToggle = viewModel::onPasswordVisibilityToggle,
                 imeAction = ImeAction.Next,
@@ -220,7 +272,7 @@ private fun SetupScreen(viewModel: SetupViewModel) {
             CleanthesPasswordField(
                 value = uiState.confirm,
                 onValueChange = viewModel::onConfirmChange,
-                label = "Confirm Password",
+                label = "Speak it again. Without doubt.",
                 visible = uiState.confirmVisible,
                 onVisibilityToggle = viewModel::onConfirmVisibilityToggle,
                 imeAction = ImeAction.Done,
@@ -249,33 +301,6 @@ private fun SetupScreen(viewModel: SetupViewModel) {
 
         Spacer(Modifier.height(8.dp))
 
-        // ── Acknowledge ───────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(SurfaceElevated)
-                .clickable { viewModel.onAcknowledgeToggle(!uiState.acknowledged) }
-                .padding(horizontal = 12.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Checkbox(
-                checked = uiState.acknowledged,
-                onCheckedChange = viewModel::onAcknowledgeToggle,
-                colors = CheckboxDefaults.colors(
-                    checkedColor   = GoldPrimary,
-                    uncheckedColor = TextMuted,
-                    checkmarkColor = OnGold,
-                ),
-            )
-            Text(
-                text = "I understand this password cannot be recovered. The gate does not ask twice.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-
         // ── Create button ─────────────────────────────────────────────────────
         Button(
             onClick = viewModel::attemptSetup,
@@ -299,7 +324,7 @@ private fun SetupScreen(viewModel: SetupViewModel) {
                 )
             } else {
                 Text(
-                    text  = "SEAL THE VAULT",
+                    text  = "FORTIFY",
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
