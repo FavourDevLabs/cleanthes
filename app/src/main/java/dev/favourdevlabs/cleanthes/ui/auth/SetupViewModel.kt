@@ -18,6 +18,8 @@ import kotlinx.coroutines.withContext
 
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
 
 // Package-level — shared with LoginActivity (same package, no qualification needed)
 internal const val PREFS_NAME            = "vault_secure_prefs"
@@ -33,6 +35,7 @@ internal const val KEY_BIOMETRIC_IV                = "biometric_iv"
 
 sealed interface SetupNavEvent {
     data object NavigateToHome : SetupNavEvent
+    data class TriggerBiometricEnrollment(val cipher: Cipher) : SetupNavEvent
 }
 
 data class SetupUiState(
@@ -43,6 +46,8 @@ data class SetupUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val acknowledged: Boolean = false,
+    val showSecondGate: Boolean = false,
+    val isEnrollingBiometric: Boolean = false,
 ) {
     val strengthScore: Int get() = computeStrengthScore(password)
 
@@ -75,6 +80,10 @@ class SetupViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _navEvents = Channel<SetupNavEvent>(Channel.BUFFERED)
     val navEvents = _navEvents.receiveAsFlow()
+
+     // Held in memory only between the password-step and the optional biometric
+    // enrollment step — never persisted unwrapped.
+    private var pendingVaultKey: SecretKey? = null
 
     fun onPasswordChange(value: String) =
         _uiState.update { it.copy(password = value, errorMessage = null) }
@@ -119,54 +128,123 @@ class SetupViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun performSetup(masterPassword: String) {
         try {
-            withContext(Dispatchers.IO) {
+            val (encSalt, vaultKey, wrappedVaultKeyPassword, storedHash) = withContext(Dispatchers.IO) {
                 val storedHash   = KeyDerivation.hashPassword(masterPassword.toCharArray())
                 val encSaltBytes = KeyDerivation.generateSalt()
                 val encSalt      = Base64.encodeToString(encSaltBytes, Base64.NO_WRAP)
 
                 // Single random vault key — the only key that ever encrypts vault data.
-                // Both unlock paths below independently wrap this same key.
+                // Both unlock paths independently wrap this same key.
                 val vaultKey = KeyDerivation.generateVaultKey()
 
                 // Password path: derive a key from the password, wrap vaultKey under it.
                 val pwdDerivedKey = KeyDerivation.deriveKey(masterPassword.toCharArray(), encSaltBytes)
                 val wrappedVaultKeyPassword = KeyDerivation.wrapKey(vaultKey, pwdDerivedKey)
 
-                // Biometric path: generate a hardware-backed Keystore key requiring
-                // fresh biometric auth, wrap vaultKey under it.
-                KeystoreManager.generateBiometricKey()
-                val cipher = KeystoreManager.getEncryptCipher()
-                val wrappedVaultKeyBytes = cipher.doFinal(vaultKey.encoded)
-                val wrappedVaultKeyBiometric = Base64.encodeToString(wrappedVaultKeyBytes, Base64.NO_WRAP)
-                val biometricIv = Base64.encodeToString(cipher.iv, Base64.NO_WRAP)
-
-                val masterKey = MasterKey.Builder(getApplication<Application>())
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
-
-                EncryptedSharedPreferences.create(
-                    getApplication(),
-                    PREFS_NAME,
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                ).edit()
-                    .putBoolean(KEY_VAULT_EXISTS,                true)
-                    .putString(KEY_AUTH_SALT,                    storedHash.saltBase64)
-                    .putString(KEY_ENC_SALT,                     encSalt)
-                    .putString(KEY_MASTER_HASH,                  storedHash.hashBase64)
-                    .putBoolean(KEY_BIOMETRIC_ENABLED,           true)
-                    .putString(KEY_WRAPPED_VAULT_KEY_PASSWORD,   wrappedVaultKeyPassword)
-                    .putString(KEY_WRAPPED_VAULT_KEY_BIOMETRIC,  wrappedVaultKeyBiometric)
-                    .putString(KEY_BIOMETRIC_IV,                 biometricIv)
-                    .apply()
+                Quadruple(encSalt, vaultKey, wrappedVaultKeyPassword, storedHash)
             }
-            _navEvents.send(SetupNavEvent.NavigateToHome)
+
+            val masterKey = MasterKey.Builder(getApplication<Application>())
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            EncryptedSharedPreferences.create(
+                getApplication(),
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            ).edit()
+                .putBoolean(KEY_VAULT_EXISTS,               true)
+                .putString(KEY_AUTH_SALT,                   storedHash.saltBase64)
+                .putString(KEY_ENC_SALT,                    encSalt)
+                .putString(KEY_MASTER_HASH,                 storedHash.hashBase64)
+                .putBoolean(KEY_BIOMETRIC_ENABLED,          false)
+                .putString(KEY_WRAPPED_VAULT_KEY_PASSWORD,  wrappedVaultKeyPassword)
+                .apply()
+
+            pendingVaultKey = vaultKey
+            _uiState.update { it.copy(isLoading = false, showSecondGate = true) }
         } catch (e: Exception) {
             android.util.Log.e("CLEANTHES_SETUP", "Setup failed", e)
             _uiState.update {
                 it.copy(isLoading = false, errorMessage = "Setup failed. Please try again.")
             }
         }
+    }
+
+    fun enableBiometricEnrollment() {
+        val vaultKey = pendingVaultKey ?: return
+        _uiState.update { it.copy(isEnrollingBiometric = true) }
+        viewModelScope.launch {
+            try {
+                val cipher = withContext(Dispatchers.IO) {
+                    KeystoreManager.generateBiometricKey()
+                    KeystoreManager.getEncryptCipher()
+                }
+                _navEvents.send(SetupNavEvent.TriggerBiometricEnrollment(cipher))
+            } catch (e: Exception) {
+                android.util.Log.e("CLEANTHES_SETUP", "Biometric enrollment failed", e)
+                _uiState.update {
+                    it.copy(isEnrollingBiometric = false, errorMessage = "Biometric setup unavailable.")
+                }
+            }
+        }
+    }
+
+    fun onBiometricEnrollmentSuccess(unlockedCipher: Cipher) {
+        val vaultKey = pendingVaultKey
+        if (vaultKey == null) {
+            _uiState.update { it.copy(isEnrollingBiometric = false) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val wrappedBytes = unlockedCipher.doFinal(vaultKey.encoded)
+                    val wrappedVaultKeyBiometric = Base64.encodeToString(wrappedBytes, Base64.NO_WRAP)
+                    val biometricIv = Base64.encodeToString(unlockedCipher.iv, Base64.NO_WRAP)
+
+                    val masterKey = MasterKey.Builder(getApplication<Application>())
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+
+                    EncryptedSharedPreferences.create(
+                        getApplication(),
+                        PREFS_NAME,
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    ).edit()
+                        .putBoolean(KEY_BIOMETRIC_ENABLED,          true)
+                        .putString(KEY_WRAPPED_VAULT_KEY_BIOMETRIC, wrappedVaultKeyBiometric)
+                        .putString(KEY_BIOMETRIC_IV,                biometricIv)
+                        .apply()
+                }
+                pendingVaultKey = null
+                _navEvents.send(SetupNavEvent.NavigateToHome)
+            } catch (e: Exception) {
+                android.util.Log.e("CLEANTHES_SETUP", "Biometric wrap failed", e)
+                _uiState.update {
+                    it.copy(isEnrollingBiometric = false, errorMessage = "Biometric setup failed.")
+                }
+            }
+        }
+    }
+
+    fun onBiometricEnrollmentFailure() {
+        _uiState.update { it.copy(isEnrollingBiometric = false) }
+    }
+
+    fun onBiometricEnrollmentError(message: String) {
+        _uiState.update { it.copy(isEnrollingBiometric = false, errorMessage = message) }
+    }
+
+    fun skipBiometricEnrollment() {
+        pendingVaultKey = null
+        viewModelScope.launch { _navEvents.send(SetupNavEvent.NavigateToHome) }
+    }
 }
-}
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+

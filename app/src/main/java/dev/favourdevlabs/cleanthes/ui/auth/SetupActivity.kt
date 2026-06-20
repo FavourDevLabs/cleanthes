@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -45,9 +45,11 @@ import dev.favourdevlabs.cleanthes.ui.home.HomeActivity
 import dev.favourdevlabs.cleanthes.ui.components.*
 import dev.favourdevlabs.cleanthes.ui.theme.*
 import kotlinx.coroutines.launch
+import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import javax.crypto.Cipher
 
 @AndroidEntryPoint
-class SetupActivity : ComponentActivity() {
+class SetupActivity : AppCompatActivity() {
 
     private val viewModel: SetupViewModel by viewModels()
     private val splashHandler = Handler(Looper.getMainLooper())
@@ -73,6 +75,7 @@ class SetupActivity : ComponentActivity() {
                             )
                             finish()
                         }
+                        is SetupNavEvent.TriggerBiometricEnrollment -> triggerBiometricEnrollment(event.cipher)
                     }
                 }
             }
@@ -115,6 +118,18 @@ class SetupActivity : ComponentActivity() {
         splashDone  = true
     }
 
+    private fun triggerBiometricEnrollment(cipher: Cipher) {
+        BiometricHelper.authenticate(
+            this,
+            cipher,
+            object : BiometricHelper.AuthCallback {
+                override fun onSuccess(cipher: Cipher)      = viewModel.onBiometricEnrollmentSuccess(cipher)
+                override fun onFailure()                    = viewModel.onBiometricEnrollmentFailure()
+                override fun onError(errorMessage: String) = viewModel.onBiometricEnrollmentError(errorMessage)
+            }
+        )
+    }
+
     // Routing-only — ViewModel owns the write path
     private fun getEncryptedPrefs() = EncryptedSharedPreferences.create(
         this,
@@ -131,6 +146,16 @@ class SetupActivity : ComponentActivity() {
 private fun SetupScreen(viewModel: SetupViewModel) {
     val uiState      by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+
+    if (uiState.showSecondGate) {
+        SecondGateScreen(
+            isEnrolling = uiState.isEnrollingBiometric,
+            errorMessage = uiState.errorMessage,
+            onEnable = viewModel::enableBiometricEnrollment,
+            onSkip = viewModel::skipBiometricEnrollment,
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -298,4 +323,97 @@ private fun strengthColor(score: Int): Color = when (score) {
     4    -> StrengthStrong
     5    -> StrengthVeryStrong
     else -> Color.Transparent
+}
+
+@Composable
+private fun SecondGateScreen(
+    isEnrolling: Boolean,
+    errorMessage: String?,
+    onEnable: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 28.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = GoldPrimary,
+                modifier = Modifier.size(44.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "A Second Gate",
+                style = MaterialTheme.typography.headlineLarge,
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "The fingerprint is swift, but the password is sovereign.\nAdd a second gate to your citadel?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+            )
+
+            AnimatedVisibility(visible = errorMessage != null) {
+                errorMessage?.let {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Danger,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
+            Button(
+                onClick = onEnable,
+                enabled = !isEnrolling,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor         = GoldPrimary,
+                    contentColor           = OnGold,
+                    disabledContainerColor = GoldPrimary.copy(alpha = 0.3f),
+                    disabledContentColor   = OnGold.copy(alpha = 0.3f),
+                ),
+            ) {
+                if (isEnrolling) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(20.dp),
+                        color       = OnGold,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(text = "ENABLE BIOMETRIC UNLOCK", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            TextButton(
+                onClick = onSkip,
+                enabled = !isEnrolling,
+            ) {
+                Text(
+                    text = "Not Now",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+            }
+        }
+    }
 }
