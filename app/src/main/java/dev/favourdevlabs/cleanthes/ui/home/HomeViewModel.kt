@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntryUseCase
+import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntriesUseCase
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.security.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,10 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntryUseCase
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntriesUseCase
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntryUseCase
 
 data class HomeUiState(
     val isLoading: Boolean = false,
@@ -27,89 +26,95 @@ data class HomeUiState(
     val errorMessage: String? = null,
 ) {
     val filteredEntries: List<VaultEntry>
-        get() = entries
-            .filter { it.id !in pendingDeleteIds }
-            .filter { entry ->
-                (selectedCategory == "All" ||
-                        entry.category.equals(selectedCategory, ignoreCase = true)) &&
-                (searchQuery.isEmpty() ||
-                        entry.title.lowercase().contains(searchQuery.lowercase()) ||
-                        (entry.username?.lowercase()?.contains(searchQuery.lowercase()) == true))
-            }
+        get() =
+            entries
+                .filter { it.id !in pendingDeleteIds }
+                .filter { entry ->
+                    (
+                        selectedCategory == "All" ||
+                            entry.category.equals(selectedCategory, ignoreCase = true)
+                    ) &&
+                        (
+                            searchQuery.isEmpty() ||
+                                entry.title.lowercase().contains(searchQuery.lowercase()) ||
+                                (entry.username?.lowercase()?.contains(searchQuery.lowercase()) == true)
+                        )
+                }
 }
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val getVaultEntries: GetVaultEntriesUseCase,
-    private val deleteVaultEntry: DeleteVaultEntryUseCase,
-    private val saveVaultEntry: SaveVaultEntryUseCase,
-    private val sessionManager: SessionManager,
-) : ViewModel() {
+class HomeViewModel
+    @Inject
+    constructor(
+        private val getVaultEntries: GetVaultEntriesUseCase,
+        private val deleteVaultEntry: DeleteVaultEntryUseCase,
+        private val saveVaultEntry: SaveVaultEntryUseCase,
+        private val sessionManager: SessionManager,
+    ) : ViewModel() {
+        private val _uiState = MutableStateFlow(HomeUiState())
+        val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    fun loadEntries() {
-        val key = sessionManager.getSessionKey() ?: run {
-            _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
-            return
-        }
-        _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            try {
-                val result = getVaultEntries(key)
-                _uiState.update {
-                    it.copy(
-                        isLoading  = false,
-                        entries    = result.entries,
-                        categories = result.categories,
-                        entryCount = result.entries.size,
-                    )
+        fun loadEntries() {
+            val key =
+                sessionManager.getSessionKey() ?: run {
+                    _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
+                    return
                 }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Failed to load entries: ${e.message}")
+            _uiState.update { it.copy(isLoading = true) }
+            viewModelScope.launch {
+                try {
+                    val result = getVaultEntries(key)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            entries = result.entries,
+                            categories = result.categories,
+                            entryCount = result.entries.size,
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = "Failed to load entries: ${e.message}")
+                    }
                 }
             }
         }
-    }
 
-       fun setSearchQuery(query: String) =
-        _uiState.update { it.copy(searchQuery = query.trim()) }
+        fun setSearchQuery(query: String) = _uiState.update { it.copy(searchQuery = query.trim()) }
 
-    fun setCategory(category: String) =
-        _uiState.update { it.copy(selectedCategory = category) }
+        fun setCategory(category: String) = _uiState.update { it.copy(selectedCategory = category) }
 
-    fun onEntrySwipedToDelete(entryId: Long) =
-        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds + entryId) }
+        fun onEntrySwipedToDelete(entryId: Long) = _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds + entryId) }
 
-    fun undoDelete(entryId: Long) =
-        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
+        fun undoDelete(entryId: Long) = _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
 
         fun confirmDelete(entryId: Long) {
-        _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
-        viewModelScope.launch {
-            try {
-                deleteVaultEntry(entryId)
-                loadEntries()
-            } catch (_: Exception) {
-                _uiState.update { it.copy(errorMessage = "Failed to delete entry.") }
+            _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
+            viewModelScope.launch {
+                try {
+                    deleteVaultEntry(entryId)
+                    loadEntries()
+                } catch (_: Exception) {
+                    _uiState.update { it.copy(errorMessage = "Failed to delete entry.") }
+                }
+            }
+        }
+
+        fun clearError() = _uiState.update { it.copy(errorMessage = null) }
+
+        fun toggleFavorite(
+            entry: VaultEntry,
+            plainPassword: String,
+        ) {
+            val key = sessionManager.getSessionKey() ?: return
+            entry.isFavorite = !entry.isFavorite
+            viewModelScope.launch {
+                try {
+                    saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(entry, plainPassword, key))
+                    loadEntries()
+                } catch (_: Exception) {
+                    _uiState.update { it.copy(errorMessage = "Failed to update entry.") }
+                }
             }
         }
     }
-
-       fun clearError() = _uiState.update { it.copy(errorMessage = null) }
-
-   fun toggleFavorite(entry: VaultEntry, plainPassword: String) {
-        val key = sessionManager.getSessionKey() ?: return
-        entry.isFavorite = !entry.isFavorite
-        viewModelScope.launch {
-            try {
-                saveVaultEntry(SaveVaultEntryUseCase.Params.Edit(entry, plainPassword, key))
-                loadEntries()
-            } catch (_: Exception) {
-                _uiState.update { it.copy(errorMessage = "Failed to update entry.") }
-            }
-        }
-    }
-}

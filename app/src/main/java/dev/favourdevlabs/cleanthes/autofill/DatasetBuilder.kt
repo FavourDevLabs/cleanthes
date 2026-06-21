@@ -11,32 +11,35 @@ import dev.favourdevlabs.cleanthes.R
 import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 
 object DatasetBuilder {
-
     fun build(
         context: Context,
         usernameId: AutofillId,
         passwordId: AutofillId,
-        entry: VaultEntry
+        entry: VaultEntry,
     ): Dataset {
-        val view = RemoteViews(context.packageName, R.layout.autofill_item).apply {
-            setTextViewText(R.id.autofill_label, entry.username)
-        }
+        val view =
+            RemoteViews(context.packageName, R.layout.autofill_item).apply {
+                setTextViewText(R.id.autofill_label, entry.username)
+            }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val presentations = Presentations.Builder()
-                .setMenuPresentation(view)
-                .build()
+            val presentations =
+                Presentations
+                    .Builder()
+                    .setMenuPresentation(view)
+                    .build()
             @Suppress("DEPRECATION")
-            Dataset.Builder(presentations)
+            Dataset
+                .Builder(presentations)
                 .setValue(usernameId, AutofillValue.forText(entry.username))
                 .setValue(passwordId, AutofillValue.forText(entry.encryptedPassword))
                 .build()
         } else {
             @Suppress("DEPRECATION")
-            Dataset.Builder(view)
+            Dataset
+                .Builder(view)
                 .setValue(usernameId, AutofillValue.forText(entry.username), view)
                 .setValue(passwordId, AutofillValue.forText(entry.encryptedPassword), view)
                 .build()
         }
     }
 }
-

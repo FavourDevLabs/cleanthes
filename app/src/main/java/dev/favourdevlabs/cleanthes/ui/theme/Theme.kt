@@ -10,32 +10,28 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // Cleanthes is always dark. No light mode. The Stoic does not flinch.
-private val DarkColorScheme = darkColorScheme(
-    primary              = GoldPrimary,
-    onPrimary            = OnGold,
-    primaryContainer     = GoldContainer,
-    onPrimaryContainer   = GoldBright,
-
-    secondary            = GoldDim,
-    onSecondary          = TextPrimary,
-    secondaryContainer   = SurfaceElevated,
-    onSecondaryContainer = TextSecondary,
-
-    background           = SurfaceDeep,
-    onBackground         = TextPrimary,
-
-    surface              = SurfaceDark,
-    onSurface            = TextPrimary,
-    surfaceVariant       = SurfaceElevated,
-    onSurfaceVariant     = TextSecondary,
-
-    error                = Danger,
-    onError              = SurfaceDeep,
-
-    outline              = GoldDim.copy(alpha = 0.35f),
-    outlineVariant       = SurfaceModal,
-    scrim                = SurfaceDeep.copy(alpha = 0.85f),
-)
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = GoldPrimary,
+        onPrimary = OnGold,
+        primaryContainer = GoldContainer,
+        onPrimaryContainer = GoldBright,
+        secondary = GoldDim,
+        onSecondary = TextPrimary,
+        secondaryContainer = SurfaceElevated,
+        onSecondaryContainer = TextSecondary,
+        background = SurfaceDeep,
+        onBackground = TextPrimary,
+        surface = SurfaceDark,
+        onSurface = TextPrimary,
+        surfaceVariant = SurfaceElevated,
+        onSurfaceVariant = TextSecondary,
+        error = Danger,
+        onError = SurfaceDeep,
+        outline = GoldDim.copy(alpha = 0.35f),
+        outlineVariant = SurfaceModal,
+        scrim = SurfaceDeep.copy(alpha = 0.85f),
+    )
 
 @Composable
 fun CleanthesTheme(content: @Composable () -> Unit) {
@@ -55,7 +51,7 @@ fun CleanthesTheme(content: @Composable () -> Unit) {
 
     MaterialTheme(
         colorScheme = DarkColorScheme,
-        typography  = CleanthesTypography,
-        content     = content,
+        typography = CleanthesTypography,
+        content = content,
     )
 }

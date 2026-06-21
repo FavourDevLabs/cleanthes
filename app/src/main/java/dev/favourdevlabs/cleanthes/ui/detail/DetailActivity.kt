@@ -8,12 +8,22 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,27 +33,42 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.ui.addedit.AddEditActivity
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
-import dev.favourdevlabs.cleanthes.ui.theme.*
+import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
+import dev.favourdevlabs.cleanthes.ui.theme.GoldPrimary
+import dev.favourdevlabs.cleanthes.ui.theme.OnGold
+import dev.favourdevlabs.cleanthes.ui.theme.SurfaceModal
+import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
+import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 
 @AndroidEntryPoint
 class DetailActivity : AuthenticatedActivity() {
-
     companion object {
         const val EXTRA_ENTRY_ID = "extra_entry_id"
     }
@@ -64,17 +89,17 @@ class DetailActivity : AuthenticatedActivity() {
                 }
 
                 DetailScreen(
-                    uiState          = uiState,
-                    onBack           = { finish() },
-                    onEdit           = {
+                    uiState = uiState,
+                    onBack = { finish() },
+                    onEdit = {
                         startActivity(
                             Intent(this, AddEditActivity::class.java).apply {
                                 putExtra(AddEditActivity.EXTRA_ENTRY_ID, entryId)
-                            }
+                            },
                         )
                     },
                     onTogglePassword = viewModel::togglePasswordVisibility,
-                    onCopy           = ::copyToClipboard,
+                    onCopy = ::copyToClipboard,
                 )
             }
         }
@@ -91,7 +116,10 @@ class DetailActivity : AuthenticatedActivity() {
         viewModel.pauseTotpUpdater()
     }
 
-    private fun copyToClipboard(label: String, value: String) {
+    private fun copyToClipboard(
+        label: String,
+        value: String,
+    ) {
         (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
             .setPrimaryClip(ClipData.newPlainText(label, value))
         Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -109,9 +137,10 @@ private fun DetailScreen(
     onCopy: (label: String, value: String) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) {
         DetailToolbar(title = uiState.title, onBack = onBack, onEdit = onEdit)
 
@@ -121,53 +150,60 @@ private fun DetailScreen(
             }
         } else {
             DetailContent(
-                uiState          = uiState,
+                uiState = uiState,
                 onTogglePassword = onTogglePassword,
-                onCopy           = onCopy,
+                onCopy = onCopy,
             )
         }
     }
 }
 
 @Composable
-private fun DetailToolbar(title: String, onBack: () -> Unit, onEdit: () -> Unit) {
+private fun DetailToolbar(
+    title: String,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+) {
     Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(start = 4.dp, end = 8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(start = 4.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Go back",
-                    tint               = TextPrimary,
+                    tint = TextPrimary,
                 )
             }
             Text(
-                text      = title.uppercase(),
-                style     = MaterialTheme.typography.titleLarge.copy(letterSpacing = 0.1.em),
-                color     = TextPrimary,
-                maxLines  = 1,
-                overflow  = TextOverflow.Ellipsis,
-                modifier  = Modifier
-                    .weight(1f)
-                    .padding(start = 4.dp),
+                text = title.uppercase(),
+                style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 0.1.em),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp),
             )
             Button(
-                onClick          = onEdit,
-                modifier         = Modifier.height(36.dp),
-                shape            = RoundedCornerShape(6.dp),
-                contentPadding   = PaddingValues(horizontal = 16.dp),
-                colors           = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary,
-                    contentColor   = OnGold,
-                ),
+                onClick = onEdit,
+                modifier = Modifier.height(36.dp),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = GoldPrimary,
+                        contentColor = OnGold,
+                    ),
             ) {
                 Text(
-                    text  = "EDIT",
+                    text = "EDIT",
                     style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp),
                 )
             }
@@ -183,20 +219,21 @@ private fun DetailContent(
     onCopy: (label: String, value: String) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(top = 20.dp, bottom = 40.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 20.dp, bottom = 40.dp),
     ) {
         // Category
         Text(
-            text  = uiState.category.uppercase(),
+            text = uiState.category.uppercase(),
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.12.em),
             color = TextSecondary,
         )
         HorizontalDivider(
-            color    = SurfaceModal,
+            color = SurfaceModal,
             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
         )
 
@@ -213,21 +250,25 @@ private fun DetailContent(
         Text("PASSWORD", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(
-            modifier         = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text     = uiState.displayPassword,
-                style    = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                color    = TextPrimary,
+                text = uiState.displayPassword,
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                color = TextPrimary,
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onTogglePassword) {
                 Icon(
-                    imageVector        = if (uiState.passwordVisible) Icons.Default.VisibilityOff
-                                         else Icons.Default.Visibility,
+                    imageVector =
+                        if (uiState.passwordVisible) {
+                            Icons.Default.VisibilityOff
+                        } else {
+                            Icons.Default.Visibility
+                        },
                     contentDescription = "Toggle password visibility",
-                    tint               = TextSecondary,
+                    tint = TextSecondary,
                 )
             }
             IconButton(onClick = { onCopy("password", uiState.password) }) {
@@ -239,10 +280,10 @@ private fun DetailContent(
         if (uiState.hasTOTP) {
             Spacer(Modifier.height(20.dp))
             TotpSection(
-                code             = uiState.totpCode,
+                code = uiState.totpCode,
                 secondsRemaining = uiState.totpSecondsRemaining,
-                period           = uiState.totpPeriod,
-                onCopy           = { onCopy("totp", uiState.totpCode.replace(" ", "")) },
+                period = uiState.totpPeriod,
+                onCopy = { onCopy("totp", uiState.totpCode.replace(" ", "")) },
             )
         }
 
@@ -250,8 +291,8 @@ private fun DetailContent(
         if (!uiState.website.isNullOrEmpty()) {
             Spacer(Modifier.height(20.dp))
             DetailRow(
-                label      = "WEBSITE",
-                value      = uiState.website,
+                label = "WEBSITE",
+                value = uiState.website,
                 valueStyle = MaterialTheme.typography.bodyLarge.copy(color = GoldPrimary),
             )
         }
@@ -262,7 +303,7 @@ private fun DetailContent(
             Text("NOTES", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
             Text(
-                text  = uiState.notes,
+                text = uiState.notes,
                 style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
                 color = TextPrimary,
             )
@@ -273,14 +314,14 @@ private fun DetailContent(
             Spacer(Modifier.height(24.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector        = Icons.Default.Star,
+                    imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint               = GoldPrimary,
-                    modifier           = Modifier.size(16.dp),
+                    tint = GoldPrimary,
+                    modifier = Modifier.size(16.dp),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text  = "Priority entry",
+                    text = "Priority entry",
                     style = MaterialTheme.typography.bodyMedium,
                     color = GoldPrimary,
                 )
@@ -298,20 +339,20 @@ private fun DetailRow(
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier          = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text  = label,
+                text = label,
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.12.em),
                 color = TextSecondary,
             )
             Spacer(Modifier.height(3.dp))
             Text(
-                text     = value,
-                style    = valueStyle,
-                color    = valueStyle.color.takeOrElse { TextPrimary },
+                text = value,
+                style = valueStyle,
+                color = valueStyle.color.takeOrElse { TextPrimary },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -329,9 +370,9 @@ private fun TotpSection(
 ) {
     // Smooth per-second interpolation — the bar glides rather than jumps
     val animatedProgress by animateFloatAsState(
-        targetValue   = secondsRemaining.toFloat() / period.toFloat(),
+        targetValue = secondsRemaining.toFloat() / period.toFloat(),
         animationSpec = tween(durationMillis = 800, easing = LinearEasing),
-        label         = "totp_progress",
+        label = "totp_progress",
     )
 
     Column {
@@ -342,34 +383,35 @@ private fun TotpSection(
         )
         Spacer(Modifier.height(4.dp))
         Row(
-            modifier          = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text         = code,
-                fontSize     = 30.sp,
-                fontFamily   = FontFamily.Monospace,
-                fontWeight   = FontWeight.Bold,
+                text = code,
+                fontSize = 30.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.08.em,
-                color        = GoldPrimary,
-                modifier     = Modifier.weight(1f),
+                color = GoldPrimary,
+                modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onCopy) {
                 Icon(
-                    imageVector        = Icons.Default.ContentCopy,
+                    imageVector = Icons.Default.ContentCopy,
                     contentDescription = "Copy authenticator code",
-                    tint               = GoldPrimary,
+                    tint = GoldPrimary,
                 )
             }
         }
         Spacer(Modifier.height(6.dp))
         LinearProgressIndicator(
-            progress  = { animatedProgress },
-            modifier  = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .clip(RoundedCornerShape(2.dp)),
-            color     = GoldPrimary,
+            progress = { animatedProgress },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+            color = GoldPrimary,
             trackColor = SurfaceModal,
         )
     }

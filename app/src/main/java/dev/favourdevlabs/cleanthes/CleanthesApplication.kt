@@ -4,13 +4,12 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import dagger.hilt.android.HiltAndroidApp
-import dev.favourdevlabs.cleanthes.security.SessionManager
 import dev.favourdevlabs.cleanthes.common.ClipboardHelper
+import dev.favourdevlabs.cleanthes.security.SessionManager
 import javax.inject.Inject
 
 @HiltAndroidApp
 class CleanthesApplication : Application() {
-
     @Inject lateinit var sessionManager: SessionManager
 
     private var startedActivityCount = 0
@@ -21,7 +20,6 @@ class CleanthesApplication : Application() {
     }
 
     private inner class AppLifecycleTracker : ActivityLifecycleCallbacks {
-
         override fun onActivityStarted(activity: Activity) {
             startedActivityCount++
         }
@@ -31,11 +29,21 @@ class CleanthesApplication : Application() {
             if (startedActivityCount == 0) onAppBackgrounded()
         }
 
-        override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-        override fun onActivityResumed(activity: Activity)                              = Unit
-        override fun onActivityPaused(activity: Activity)                               = Unit
-        override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle)  = Unit
-        override fun onActivityDestroyed(activity: Activity)                            = Unit
+        override fun onActivityCreated(
+            activity: Activity,
+            savedInstanceState: Bundle?,
+        ) = Unit
+
+        override fun onActivityResumed(activity: Activity) = Unit
+
+        override fun onActivityPaused(activity: Activity) = Unit
+
+        override fun onActivitySaveInstanceState(
+            activity: Activity,
+            outState: Bundle,
+        ) = Unit
+
+        override fun onActivityDestroyed(activity: Activity) = Unit
     }
 
     private fun onAppBackgrounded() {

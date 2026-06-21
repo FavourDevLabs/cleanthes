@@ -10,7 +10,7 @@ val composeBom = "2024.12.01"
 
 android {
     namespace = "dev.favourdevlabs.cleanthes"
-    compileSdk = 34  // bump — required for latest Compose APIs
+    compileSdk = 34 // bump — required for latest Compose APIs
 
     defaultConfig {
         applicationId = "dev.favourdevlabs.cleanthes"
@@ -27,7 +27,7 @@ android {
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
         getByName("debug") {
@@ -47,13 +47,12 @@ android {
 
     buildFeatures {
         compose = true
-        viewBinding = true   // keep true during migration; flip to false on last screen
+        viewBinding = true // keep true during migration; flip to false on last screen
     }
 
     ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
-
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -108,8 +107,7 @@ dependencies {
     // -- Room ---------------------------------------------------------
     val roomVersion = "2.7.1"
 
-implementation("androidx.room:room-runtime:$roomVersion")
-implementation("androidx.room:room-ktx:$roomVersion")
-ksp("androidx.room:room-compiler:$roomVersion")
-
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 }
