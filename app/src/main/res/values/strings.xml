@@ -1,6 +1,7 @@
 <resources>
     <!-- App Branding -->
     <string name="app_name">Cleanthes</string>
+    <string name="home_wordmark">The Citadel</string>
     <string name="app_brand">FAVOURDEVLABS</string>
 
     <!-- Setup Screen (activity_setup.xml) -->

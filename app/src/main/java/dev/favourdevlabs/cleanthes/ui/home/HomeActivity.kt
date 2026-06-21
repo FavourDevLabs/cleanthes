@@ -333,7 +333,7 @@ private fun HomeToolbar(
                     .padding(start = 8.dp),
         ) {
             Text(
-                text = stringResource(R.string.app_name).uppercase(),
+                text = stringResource(R.string.home_wordmark).uppercase(),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.14.em,
