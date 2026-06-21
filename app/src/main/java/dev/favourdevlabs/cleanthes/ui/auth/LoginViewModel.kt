@@ -96,6 +96,9 @@ class LoginViewModel @Inject constructor(
                 KeystoreManager.biometricKeyExists()
 
             _uiState.update { it.copy(showBiometricSection = biometricAvailable) }
+            if (biometricAvailable) {
+                requestBiometricAuth()
+            }
         } catch (_: Exception) { }
     }
 
