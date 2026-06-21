@@ -43,3 +43,4 @@ Task
 deploy.sh
 a.out
 kls_database.db
+*.bak
