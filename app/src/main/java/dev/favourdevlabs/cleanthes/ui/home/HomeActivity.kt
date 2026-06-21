@@ -334,14 +334,14 @@ private fun HomeToolbar(
         ) {
             Text(
                 text = stringResource(R.string.app_name).uppercase(),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.1.em,
-                color = TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.14.em,
+                color = TextSecondary,
             )
             if (entryCount > 0) {
                 Text(
-                    text = "$entryCount ${if (entryCount == 1) "entry" else "entries"}",
+                    text = "$entryCount ${if (entryCount == 1) "entrusted" else "entrusted"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.6f),
                 )
