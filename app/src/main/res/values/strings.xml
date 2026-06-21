@@ -1,6 +1,7 @@
 <resources>
     <!-- App Branding -->
     <string name="app_name">Cleanthes</string>
+    <string name="home_wordmark">The Citadel</string>
     <string name="app_brand">FAVOURDEVLABS</string>
 
     <!-- Setup Screen (activity_setup.xml) -->
@@ -20,7 +21,7 @@
     <!-- Login Screen (activity_login.xml) -->
     <string name="login_subtitle">The gate does not ask twice.</string>
     <string name="login_label_password">Unlock Vault</string>
-    <string name="login_btn_unlock">AUTHENTICATE</string>
+    <string name="login_btn_unlock">UNSEAL</string>
     <string name="login_biometric_hint">or present your hand to the gate.</string>
 
     <!-- Accessibility & UI Utility -->

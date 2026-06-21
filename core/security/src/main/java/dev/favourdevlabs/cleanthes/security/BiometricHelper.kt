@@ -53,6 +53,7 @@ object BiometricHelper {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("The Inner Citadel")
             .setSubtitle("The disciplined alone may enter.")
+            .setNegativeButtonText("Retreat")
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG
             )

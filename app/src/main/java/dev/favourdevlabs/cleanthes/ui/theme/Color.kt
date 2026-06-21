@@ -22,6 +22,7 @@ val TextMuted = Color(0xFF424242) // cleanthes_disabled
 // ── Semantic ──────────────────────────────────────────────────────────────────
 val Danger = Color(0xFFCF6679) // cleanthes_error
 val Success = Color(0xFF4CAF50) // cleanthes_success
+val Warning = Color(0xFFFFB74D) // cleanthes_warning
 val OnGold = Color(0xFF000000) // black text on bright gold
 
 // ── Password strength ─────────────────────────────────────────────────────────
