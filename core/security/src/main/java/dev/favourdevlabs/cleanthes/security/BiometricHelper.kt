@@ -45,7 +45,15 @@ object BiometricHelper {
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    callback.onError(errString.toString())
+                    val userDismissed =
+                        errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+                        errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
+                        errorCode == BiometricPrompt.ERROR_CANCELED
+                    if (userDismissed) {
+                        callback.onFailure()
+                    } else {
+                        callback.onError(errString.toString())
+                    }
                 }
             }
         )
