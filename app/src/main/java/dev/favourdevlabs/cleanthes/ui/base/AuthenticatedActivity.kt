@@ -3,7 +3,7 @@ package dev.favourdevlabs.cleanthes.ui.base
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
-import dev.favourdevlabs.cleanthes.security.SessionManager
+import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.ui.auth.LoginActivity
 import javax.inject.Inject
 
@@ -13,14 +13,14 @@ abstract class AuthenticatedActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (!sessionManager.isUnlocked()) {
+        if (sessionManager.lockState.value) {
             redirectToLogin()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        if (sessionManager.isUnlocked()) {
+        if (!sessionManager.lockState.value) {
             sessionManager.refreshSession()
         }
     }

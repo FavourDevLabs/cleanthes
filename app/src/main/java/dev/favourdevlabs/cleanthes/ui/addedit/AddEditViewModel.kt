@@ -9,7 +9,7 @@ import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.security.OtpAuthParser
-import dev.favourdevlabs.cleanthes.security.SessionManager
+import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.security.TOTPGenerator
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

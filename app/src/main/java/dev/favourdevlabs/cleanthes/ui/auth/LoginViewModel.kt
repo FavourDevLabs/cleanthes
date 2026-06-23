@@ -11,7 +11,7 @@ import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVaultUseCase
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
-import dev.favourdevlabs.cleanthes.security.SessionManager
+import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay

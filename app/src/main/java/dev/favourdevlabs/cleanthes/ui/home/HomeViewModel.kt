@@ -7,7 +7,7 @@ import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntryUseCase
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntriesUseCase
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntryUseCase
-import dev.favourdevlabs.cleanthes.security.SessionManager
+import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.favourdevlabs.cleanthes.domain"
+    namespace = "dev.favourdevlabs.cleanthes.security.session.impl"
     compileSdk = 34
 
     defaultConfig {
@@ -23,13 +23,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:data"))
-    implementation(project(":core:security"))
     implementation(project(":core:security:session:api"))
 
     implementation("com.google.dagger:hilt-android:2.59")
     ksp("com.google.dagger:hilt-android-compiler:2.59")
-
-    implementation("androidx.core:core-ktx:1.13.1")
 }
-
