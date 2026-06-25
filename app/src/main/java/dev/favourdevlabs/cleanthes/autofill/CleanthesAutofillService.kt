@@ -17,7 +17,7 @@ import android.view.autofill.AutofillId
 import android.widget.RemoteViews
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.R
-import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
+import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +127,21 @@ class CleanthesAutofillService : AutofillService() {
             try {
                 @OptIn(DelicateCoroutinesApi::class)
                 GlobalScope.launch(Dispatchers.IO) {
-                    repository.addEntry(key, username, password, key, "Autofill", null, false, secretKey)
+                    repository.addEntry(
+                        title = key,
+                        userName = username,
+                        plainPassword = password,
+                        website = key,
+                        category = "Autofill",
+                        notes = null,
+                        isFavorite = false,
+                        plainTotpSecret = null,
+                        totpIssuer = null,
+                        totpDigits = 6,
+                        totpPeriod = 30,
+                        totpAlgorithm = "SHA1",
+                        key = secretKey,
+                    )
                 }
             } catch (_: Exception) {
             }

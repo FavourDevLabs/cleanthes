@@ -7,6 +7,7 @@ kotlin {
 }
 
 dependencies {
-    // javax.crypto.SecretKey is JVM standard — no imports needed
+    api(project(":core:domain"))
 }
+
 

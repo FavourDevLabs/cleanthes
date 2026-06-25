@@ -8,14 +8,14 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
 import dev.favourdevlabs.cleanthes.R
-import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
+import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 
 object DatasetBuilder {
     fun build(
         context: Context,
         usernameId: AutofillId,
         passwordId: AutofillId,
-        entry: VaultEntry,
+        entry: VaultItem,
     ): Dataset {
         val view =
             RemoteViews(context.packageName, R.layout.autofill_item).apply {
@@ -31,14 +31,14 @@ object DatasetBuilder {
             Dataset
                 .Builder(presentations)
                 .setValue(usernameId, AutofillValue.forText(entry.username))
-                .setValue(passwordId, AutofillValue.forText(entry.encryptedPassword))
+                .setValue(passwordId, AutofillValue.forText(entry.password))
                 .build()
         } else {
             @Suppress("DEPRECATION")
             Dataset
                 .Builder(view)
                 .setValue(usernameId, AutofillValue.forText(entry.username), view)
-                .setValue(passwordId, AutofillValue.forText(entry.encryptedPassword), view)
+                .setValue(passwordId, AutofillValue.forText(entry.password), view)
                 .build()
         }
     }

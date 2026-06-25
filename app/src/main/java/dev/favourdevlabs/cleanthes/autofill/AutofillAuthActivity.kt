@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
-import dev.favourdevlabs.cleanthes.data.repository.VaultRepository
+import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import kotlinx.coroutines.Dispatchers
@@ -151,9 +151,9 @@ class AutofillAuthActivity : AppCompatActivity() {
         }
 
     private fun filter(
-        entries: List<VaultEntry>,
+        entries: List<VaultItem>,
         key: String?,
-    ): List<VaultEntry> {
+    ): List<VaultItem> {
         if (key.isNullOrEmpty()) return emptyList()
         val lower = key.lowercase()
         return entries.filter { e ->

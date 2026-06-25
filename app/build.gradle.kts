@@ -98,7 +98,8 @@ dependencies {
     implementation(project(":core:security"))
     implementation(project(":core:security:session:api"))
     implementation(project(":core:security:session:impl"))
-    implementation(project(":core:data"))
+    implementation(project(":core:data:api"))
+    implementation(project(":core:data:impl"))
     implementation(project(":core:domain"))
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
