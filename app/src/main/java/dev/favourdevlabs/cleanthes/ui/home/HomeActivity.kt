@@ -85,7 +85,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.R
-import dev.favourdevlabs.cleanthes.data.entities.VaultEntry
+import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import dev.favourdevlabs.cleanthes.ui.addedit.AddEditActivity
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
 import dev.favourdevlabs.cleanthes.ui.components.cleanthesOutlinedTextFieldColors
@@ -149,7 +149,7 @@ class HomeActivity : AuthenticatedActivity() {
 @Composable
 private fun HomeScreen(
     viewModel: HomeViewModel,
-    onEntryClick: (VaultEntry) -> Unit,
+    onEntryClick: (VaultItem) -> Unit,
     onCopyPassword: (String) -> Unit,
     onAddNew: () -> Unit,
     onSettings: () -> Unit,
@@ -443,8 +443,8 @@ private fun SwipeDeleteBackground(state: SwipeToDismissBoxState) {
 
 @Composable
 private fun EntryCard(
-    entry: VaultEntry,
-    onEntryClick: (VaultEntry) -> Unit,
+    entry: VaultItem,
+    onEntryClick: (VaultItem) -> Unit,
     onCopyClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -518,7 +518,7 @@ private fun EntryCard(
                 )
             }
 
-            IconButton(onClick = { onCopyClick(entry.encryptedPassword ?: "") }) {
+            IconButton(onClick = { onCopyClick(entry.password ?: "") }) {
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
                     contentDescription = "Copy password",
@@ -591,7 +591,7 @@ private fun EmptyState(
 }
 
 // Category avatar color — mirrors VaultEntryViewHolder.categoryColor()
-private fun avatarColor(entry: VaultEntry): Color {
+private fun avatarColor(entry: VaultItem): Color {
     if (entry.isFavorite) return GoldBright
     val palette =
         listOf(

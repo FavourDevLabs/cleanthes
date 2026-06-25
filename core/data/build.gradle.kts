@@ -8,18 +8,14 @@ android {
     namespace = "dev.favourdevlabs.cleanthes.data"
     compileSdk = 34
 
-    defaultConfig {
-        minSdk = 24
-    }
+    defaultConfig { minSdk = 24 }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
+    kotlin { jvmToolchain(17) }
 
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
@@ -27,7 +23,9 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:security"))
+    api(project(":core:domain"))          // VaultItem + use case interfaces — api so :app sees VaultItem too
+    implementation(project(":core:security"))  // CryptoManager, KeyDerivation
+    implementation(project(":core:security:session:api"))
 
     val roomVersion = "2.7.1"
     implementation("androidx.room:room-runtime:$roomVersion")

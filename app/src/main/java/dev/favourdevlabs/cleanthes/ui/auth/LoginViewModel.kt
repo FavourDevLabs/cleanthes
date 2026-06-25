@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVaultUseCase
+import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVault
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
@@ -55,7 +55,7 @@ class LoginViewModel
     constructor(
         app: Application,
         private val sessionManager: SessionManager,
-        private val unlockVault: UnlockVaultUseCase,
+        private val unlockVault: UnlockVault,
     ) : AndroidViewModel(app) {
         private val _uiState = MutableStateFlow(LoginUiState())
         val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -152,7 +152,7 @@ class LoginViewModel
             try {
                 val encSalt = storedEncSalt ?: throw IllegalStateException("Salt missing")
                 val wrappedVaultKey = storedWrappedVaultKeyPassword ?: throw IllegalStateException("Vault key missing")
-                unlockVault(UnlockVaultUseCase.Params.Password(masterPassword, encSalt, wrappedVaultKey))
+                unlockVault(UnlockVault.Params.Password(masterPassword, encSalt, wrappedVaultKey))
                 _events.send(LoginEvent.NavigateToHome)
             } catch (_: Exception) {
                 _uiState.update {
@@ -201,7 +201,7 @@ class LoginViewModel
                         val rawKeyBytes = unlockedCipher.doFinal(wrappedBytes)
                         javax.crypto.spec.SecretKeySpec(rawKeyBytes, "AES")
                     }
-                unlockVault(UnlockVaultUseCase.Params.Biometric(vaultKey))
+                unlockVault(UnlockVault.Params.Biometric(vaultKey))
                 _events.send(LoginEvent.NavigateToHome)
             } catch (_: Exception) {
                 _uiState.update {
