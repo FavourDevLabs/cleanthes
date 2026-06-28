@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
-import dev.favourdevlabs.cleanthes.security.TOTPGenerator
+import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

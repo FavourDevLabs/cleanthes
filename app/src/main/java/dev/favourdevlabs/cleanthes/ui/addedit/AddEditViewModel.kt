@@ -7,8 +7,8 @@ import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
-import dev.favourdevlabs.cleanthes.security.OtpAuthParser
-import dev.favourdevlabs.cleanthes.security.TOTPGenerator
+import dev.favourdevlabs.cleanthes.domain.otp.OtpAuthParser
+import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.common.PasswordGenerator
 import kotlinx.coroutines.channels.Channel
