@@ -5,12 +5,18 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
+import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
+import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
+import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
 import dev.favourdevlabs.cleanthes.data.impl.repository.VaultRepositoryImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.DeleteVaultEntryImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.GetVaultEntriesImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.GetVaultEntryImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.SaveVaultEntryImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.UnlockVaultImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.EnrolBiometricImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.InitialiseVaultImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.LoadVaultCredentialsImpl
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
@@ -39,5 +45,14 @@ abstract class DataModule {
 
     @Binds @Singleton
     abstract fun bindUnlockVault(impl: UnlockVaultImpl): UnlockVault
+
+    @Binds @Singleton
+    abstract fun bindInitialiseVault(impl: InitialiseVaultImpl): InitialiseVault
+
+    @Binds @Singleton
+    abstract fun bindEnrolBiometric(impl: EnrolBiometricImpl): EnrolBiometric
+
+    @Binds @Singleton
+    abstract fun bindLoadVaultCredentials(impl: LoadVaultCredentialsImpl): LoadVaultCredentials
 }
 

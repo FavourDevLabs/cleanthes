@@ -37,5 +37,6 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.59")
 
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 

@@ -58,8 +58,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+
+
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
@@ -109,6 +109,13 @@ class SetupActivity : AppCompatActivity() {
                             )
                             finish()
                         }
+                        SetupNavEvent.NavigateToLogin -> {
+                            startActivity(
+                                Intent(this@SetupActivity, LoginActivity::class.java)
+                                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+                            )
+                            finish()
+                        }
                         is SetupNavEvent.TriggerBiometricEnrollment -> triggerBiometricEnrollment(event.cipher)
                     }
                 }
@@ -128,6 +135,7 @@ class SetupActivity : AppCompatActivity() {
         }
 
         splashHandler.postDelayed(::onSplashComplete, 2000)
+        viewModel.checkVaultExists()
     }
 
     override fun onDestroy() {
@@ -136,19 +144,6 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun onSplashComplete() {
-        try {
-            if (getEncryptedPrefs().getBoolean(KEY_VAULT_EXISTS, false)) {
-                splashDone = true
-                startActivity(
-                    Intent(this, LoginActivity::class.java)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                )
-                finish()
-                return
-            }
-        } catch (_: Exception) {
-        }
-
         showContent = true
         splashDone = true
     }
@@ -167,15 +162,6 @@ class SetupActivity : AppCompatActivity() {
         )
     }
 
-    // Routing-only — ViewModel owns the write path
-    private fun getEncryptedPrefs() =
-        EncryptedSharedPreferences.create(
-            this,
-            PREFS_NAME,
-            MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
