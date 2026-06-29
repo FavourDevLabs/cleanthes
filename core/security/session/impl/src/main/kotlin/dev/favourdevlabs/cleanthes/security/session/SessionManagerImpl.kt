@@ -46,6 +46,8 @@ class SessionManagerImpl
             _lockState.value = true
         }
 
+        override fun getLastActiveTimestamp(): Long = sessionStartTime
+
         private fun isSessionExpired(): Boolean {
             if (sessionKey == null) return true
             return (System.currentTimeMillis() - sessionStartTime) > SESSION_TIMEOUT_MS

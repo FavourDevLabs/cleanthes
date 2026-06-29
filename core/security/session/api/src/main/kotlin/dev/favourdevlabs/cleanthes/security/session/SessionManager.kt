@@ -25,4 +25,12 @@ interface SessionManager {
     fun clearSession()
 
     fun refreshSession()
+
+    /**
+     * Returns the epoch-millis timestamp of the last time the session was
+     * started or refreshed, or 0L if no session has ever been active.
+     * Intended for future inactivity-based mechanisms (auto-lock, etc.) to
+     * read elapsed time since last activity.
+     */
+    fun getLastActiveTimestamp(): Long
 }
