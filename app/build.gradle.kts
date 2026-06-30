@@ -95,12 +95,21 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
     implementation(project(":core:common"))
+    implementation(project(":core:ui"))
     implementation(project(":core:security"))
     implementation(project(":core:security:session:api"))
     implementation(project(":core:security:session:impl"))
     implementation(project(":core:data:api"))
     implementation(project(":core:data:impl"))
     implementation(project(":core:domain"))
+
+    implementation(project(":feature:auth"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:addedit"))
+    implementation(project(":feature:detail"))
+    implementation(project(":feature:settings"))
+    implementation(project(":feature:autofill"))
+
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.59")

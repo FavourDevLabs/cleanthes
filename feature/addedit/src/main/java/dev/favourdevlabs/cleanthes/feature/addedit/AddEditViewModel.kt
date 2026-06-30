@@ -1,0 +1,239 @@
+package dev.favourdevlabs.cleanthes.feature.addedit
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
+import dev.favourdevlabs.cleanthes.domain.otp.OtpAuthParser
+import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
+import dev.favourdevlabs.cleanthes.security.session.SessionManager
+import dev.favourdevlabs.cleanthes.common.PasswordGenerator
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+sealed interface AddEditEvent {
+    data object NavigateBack : AddEditEvent
+}
+
+data class AddEditUiState(
+    val isEditMode: Boolean = false,
+    val isLoading: Boolean = false,
+    val title: String = "",
+    val username: String = "",
+    val password: String = "",
+    val passwordVisible: Boolean = false,
+    val website: String = "",
+    val category: String = "",
+    val notes: String = "",
+    val totpSecret: String = "",
+    val isFavorite: Boolean = false,
+    val strengthScore: Int = 0,
+    val errorMessage: String? = null,
+    val showDeleteDialog: Boolean = false,
+    val totpAlgorithm: String = "SHA1",
+    val totpDigits: Int = 6,
+    val totpPeriod: Int = 30,
+    val totpIssuer: String? = null,
+)
+
+@HiltViewModel
+class AddEditViewModel @Inject constructor(
+    private val getVaultEntry: GetVaultEntry,
+    private val saveVaultEntry: SaveVaultEntry,
+    private val deleteVaultEntry: DeleteVaultEntry,
+    private val sessionManager: SessionManager,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(AddEditUiState())
+    val uiState: StateFlow<AddEditUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<AddEditEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    private var existingEntry: VaultItem? = null
+    private var initialized = false
+
+    fun initForEntry(entryId: Long) {
+        if (initialized) return
+        initialized = true
+        if (entryId == -1L) return
+
+        _uiState.update { it.copy(isEditMode = true, isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val key = sessionManager.getSessionKey() ?: run {
+                    _events.send(AddEditEvent.NavigateBack); return@launch
+                }
+                val item = getVaultEntry(entryId, key)
+                if (item == null) { _events.send(AddEditEvent.NavigateBack); return@launch }
+                existingEntry = item
+                _uiState.update {
+                    it.copy(
+                        isLoading     = false,
+                        title         = item.title,
+                        username      = item.username,
+                        password      = item.password,
+                        website       = item.website       ?: "",
+                        category      = item.category,
+                        notes         = item.notes         ?: "",
+                        totpSecret    = item.totpSecret    ?: "",
+                        isFavorite    = item.isFavorite,
+                        totpAlgorithm = item.totpAlgorithm,
+                        totpDigits    = item.totpDigits,
+                        totpPeriod    = item.totpPeriod,
+                        totpIssuer    = item.totpIssuer,
+                        strengthScore = PasswordGenerator.evaluateStrength(item.password),
+                    )
+                }
+            } catch (_: Exception) { _events.send(AddEditEvent.NavigateBack) }
+        }
+    }
+
+    fun onTitleChange(v: String)    = _uiState.update { it.copy(title    = v, errorMessage = null) }
+    fun onUsernameChange(v: String) = _uiState.update { it.copy(username = v, errorMessage = null) }
+    fun onWebsiteChange(v: String)  = _uiState.update { it.copy(website  = v) }
+    fun onCategoryChange(v: String) = _uiState.update { it.copy(category = v) }
+    fun onNotesChange(v: String)    = _uiState.update { it.copy(notes    = v) }
+    fun onFavoriteToggle(c: Boolean) = _uiState.update { it.copy(isFavorite = c) }
+    fun showDeleteDialog(show: Boolean) = _uiState.update { it.copy(showDeleteDialog = show) }
+
+    fun onPasswordChange(v: String) = _uiState.update {
+        it.copy(
+            password      = v,
+            errorMessage  = null,
+            strengthScore = PasswordGenerator.evaluateStrength(v),
+        )
+    }
+
+    fun onPasswordVisibilityToggle() =
+        _uiState.update { it.copy(passwordVisible = !it.passwordVisible) }
+
+    fun onTotpSecretChange(v: String) =
+        _uiState.update { it.copy(totpSecret = v, errorMessage = null) }
+
+    fun onGeneratedPassword(password: String) = _uiState.update {
+        it.copy(
+            password        = password,
+            passwordVisible = true,
+            strengthScore   = PasswordGenerator.evaluateStrength(password),
+        )
+    }
+
+    fun onQrResult(rawContent: String) {
+        try {
+            val parsed = OtpAuthParser.parse(rawContent)
+            _uiState.update {
+                it.copy(
+                    totpSecret    = parsed.secret,
+                    totpAlgorithm = parsed.algorithm,
+                    totpDigits    = parsed.digits,
+                    totpPeriod    = parsed.period,
+                    totpIssuer    = parsed.issuer,
+                    errorMessage  = null,
+                    title = if (!it.isEditMode && it.title.isEmpty() && parsed.issuer != null)
+                        parsed.issuer!! else it.title,
+                )
+            }
+        } catch (e: UnsupportedOperationException) {
+            _uiState.update { it.copy(errorMessage = "HOTP is not supported — only TOTP codes.") }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Invalid QR code — not a valid 2FA setup code.") }
+        }
+    }
+
+    fun attemptSave() {
+        val s        = _uiState.value
+        val title    = s.title.trim()
+        val username = s.username.trim()
+        val password = s.password.trim()
+        val totpRaw  = s.totpSecret.trim().uppercase().replace("\\s+".toRegex(), "")
+
+        val error = when {
+            title.isEmpty()    -> "Title is required"
+            username.isEmpty() -> "Username or Email is required"
+            password.isEmpty() -> "Password is required"
+            totpRaw.isNotEmpty() && !isValidTotp(totpRaw, s) ->
+                "Invalid authenticator secret — check the Base32 code."
+            else -> null
+        }
+        if (error != null) { _uiState.update { it.copy(errorMessage = error) }; return }
+
+        val key = sessionManager.getSessionKey() ?: run {
+            viewModelScope.launch { _events.send(AddEditEvent.NavigateBack) }; return
+        }
+
+        val finalTotp   = totpRaw.ifEmpty { null }
+        val finalIssuer = if (finalTotp != null) s.totpIssuer else null
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                if (s.isEditMode && existingEntry != null) {
+                    // VaultItem is immutable — use copy() instead of mutation
+                    val updated = existingEntry!!.copy(
+                        title         = title,
+                        username      = username,
+                        website       = s.website.trim().ifEmpty { null },
+                        category      = s.category,
+                        notes         = s.notes.trim().ifEmpty { null },
+                        isFavorite    = s.isFavorite,
+                        totpSecret    = finalTotp,
+                        totpIssuer    = finalIssuer,
+                        totpAlgorithm = s.totpAlgorithm,
+                        totpDigits    = s.totpDigits,
+                        totpPeriod    = s.totpPeriod,
+                    )
+                    saveVaultEntry(SaveVaultEntry.Params.Edit(updated, password, key))
+                    existingEntry = updated   // update in-memory ref only after confirmed success
+                } else {
+                    saveVaultEntry(
+                        SaveVaultEntry.Params.New(
+                            title          = title,
+                            username       = username,
+                            plainPassword  = password,
+                            website        = s.website.trim().ifEmpty { null },
+                            category       = s.category,
+                            notes          = s.notes.trim().ifEmpty { null },
+                            isFavorite     = s.isFavorite,
+                            totpSecret     = finalTotp,
+                            totpIssuer     = finalIssuer,
+                            totpDigits     = s.totpDigits,
+                            totpPeriod     = s.totpPeriod,
+                            totpAlgorithm  = s.totpAlgorithm,
+                            key            = key,
+                        )
+                    )
+                }
+                _events.send(AddEditEvent.NavigateBack)
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to save. Please try again.") }
+            }
+        }
+    }
+
+    fun confirmDelete() {
+        val entry = existingEntry ?: return
+        viewModelScope.launch {
+            try {
+                deleteVaultEntry(entry.id)
+                _events.send(AddEditEvent.NavigateBack)
+            } catch (_: Exception) {
+                _uiState.update { it.copy(showDeleteDialog = false, errorMessage = "Failed to delete entry.") }
+            }
+        }
+    }
+
+    private fun isValidTotp(secret: String, s: AddEditUiState): Boolean = try {
+        TOTPGenerator.generate(secret, s.totpDigits, s.totpPeriod, s.totpAlgorithm); true
+    } catch (_: Exception) { false }
+}
+

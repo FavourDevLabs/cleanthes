@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cleanthes</string>
+    <string name="hint_master_password">Guard the gate</string>
+    <string name="login_subtitle">The gate does not ask twice.</string>
+    <string name="login_label_password">Unlock Vault</string>
+    <string name="login_btn_unlock">UNSEAL</string>
+    <string name="login_biometric_hint">or present your hand to the gate.</string>
+    <string name="cd_fingerprint_icon">Biometric Authentication Icon</string>
+    <string name="login_attempts_remaining">%d attempts remaining</string>
+    <string name="login_locked_out">Locked for %d seconds</string>
+</resources>
