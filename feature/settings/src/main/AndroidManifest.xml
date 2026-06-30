@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name=".feature.settings.SettingsActivity"
+            android:name=".SettingsActivity"
             android:exported="false" />
     </application>
 

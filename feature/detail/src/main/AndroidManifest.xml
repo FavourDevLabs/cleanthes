@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name=".feature.detail.DetailActivity"
+            android:name=".DetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustPan"
             android:screenOrientation="portrait" />

@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name=".feature.home.HomeActivity"
+            android:name=".HomeActivity"
             android:exported="false"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustPan"

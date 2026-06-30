@@ -3,7 +3,7 @@
 
     <application>
         <activity
-            android:name=".feature.auth.SetupActivity"
+            android:name=".SetupActivity"
             android:exported="true"
             android:theme="@style/Theme.Cleanthes.SplashScreen"
             android:windowSoftInputMode="adjustResize"
@@ -15,7 +15,7 @@
         </activity>
 
         <activity
-            android:name=".feature.auth.LoginActivity"
+            android:name=".LoginActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />

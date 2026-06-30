@@ -4,7 +4,7 @@
 
     <application>
         <activity
-            android:name=".feature.addedit.AddEditActivity"
+            android:name=".AddEditActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />

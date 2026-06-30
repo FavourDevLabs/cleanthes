@@ -3,12 +3,12 @@
 
     <application>
         <activity
-            android:name=".feature.autofill.AutofillAuthActivity"
+            android:name=".AutofillAuthActivity"
             android:theme="@style/Theme.Cleanthes.Transparent"
             android:exported="false" />
 
         <service
-            android:name=".feature.autofill.CleanthesAutofillService"
+            android:name=".CleanthesAutofillService"
             android:label="Cleanthes"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE"
             android:exported="true">
