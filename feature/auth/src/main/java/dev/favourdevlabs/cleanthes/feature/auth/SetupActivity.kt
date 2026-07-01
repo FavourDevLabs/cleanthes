@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +61,7 @@ import androidx.lifecycle.repeatOnLifecycle
 
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import dev.favourdevlabs.cleanthes.ui.base.SecureActivity
 import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
 import dev.favourdevlabs.cleanthes.ui.components.PasswordStrengthBar
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
@@ -75,15 +75,15 @@ import dev.favourdevlabs.cleanthes.ui.theme.StrengthVeryWeak
 import dev.favourdevlabs.cleanthes.ui.theme.StrengthWeak
 import dev.favourdevlabs.cleanthes.ui.theme.Success
 import dev.favourdevlabs.cleanthes.ui.theme.SurfaceModal
+import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import dev.favourdevlabs.cleanthes.ui.theme.TextMuted
 import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
-import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import dev.favourdevlabs.cleanthes.ui.theme.Warning
 import kotlinx.coroutines.launch
 import javax.crypto.Cipher
 
 @AndroidEntryPoint
-class SetupActivity : AppCompatActivity() {
+class SetupActivity : SecureActivity() {
     private val viewModel: SetupViewModel by viewModels()
     private val splashHandler = Handler(Looper.getMainLooper())
 
@@ -448,7 +448,6 @@ private fun SecondGateScreen(
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = GoldPrimary,
-                        contentColor = OnGold,
                         disabledContainerColor = GoldPrimary.copy(alpha = 0.3f),
                         disabledContentColor = OnGold.copy(alpha = 0.3f),
                     ),

@@ -1,13 +1,12 @@
 package dev.favourdevlabs.cleanthes.ui.base
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import javax.inject.Inject
 
 @AndroidEntryPoint
-abstract class AuthenticatedActivity : AppCompatActivity() {
+abstract class AuthenticatedActivity : SecureActivity() {
 
     @Inject lateinit var sessionManager: SessionManager
 
@@ -26,11 +25,9 @@ abstract class AuthenticatedActivity : AppCompatActivity() {
     }
 
     protected fun redirectToLogin() {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-            setPackage(packageName)
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
+        } ?: return
         startActivity(intent)
         finish()
     }

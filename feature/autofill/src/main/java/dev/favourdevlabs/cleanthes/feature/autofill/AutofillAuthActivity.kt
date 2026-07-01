@@ -4,11 +4,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.service.autofill.FillResponse
-import android.view.WindowManager
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,6 +19,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
+import dev.favourdevlabs.cleanthes.ui.base.SecureActivity
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,7 +27,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class AutofillAuthActivity : AppCompatActivity() {
+class AutofillAuthActivity : SecureActivity() {
     @Inject lateinit var sessionManager: SessionManager
 
     @Inject lateinit var repository: VaultRepository
@@ -42,10 +41,6 @@ class AutofillAuthActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
         setContent {
             CleanthesTheme {
                 Box(
