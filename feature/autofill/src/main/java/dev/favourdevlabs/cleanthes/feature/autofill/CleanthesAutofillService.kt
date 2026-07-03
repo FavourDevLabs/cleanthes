@@ -107,11 +107,14 @@ class CleanthesAutofillService : AutofillService() {
             )
         }
 
+        val saveInfoIds =
+            listOfNotNull(parsed.usernameId, parsed.passwordId, parsed.repeatPasswordId).toTypedArray()
+
         responseBuilder.setSaveInfo(
             SaveInfo
                 .Builder(
                     SaveInfo.SAVE_DATA_TYPE_PASSWORD,
-                    arrayOf(parsed.usernameId, parsed.passwordId),
+                    saveInfoIds,
                 ).build(),
         )
 
@@ -155,6 +158,15 @@ class CleanthesAutofillService : AutofillService() {
         if (username == null || password == null) {
             callback.onSuccess()
             return
+        }
+
+        val repeatPasswordId = parsed.repeatPasswordId
+        if (repeatPasswordId != null) {
+            val repeatPassword = extractValue(structure, repeatPasswordId)
+            if (repeatPassword != null && repeatPassword != password) {
+                callback.onFailure("Passwords do not match")
+                return
+            }
         }
 
         val handler = CoroutineExceptionHandler { _, exception ->
