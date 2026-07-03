@@ -48,17 +48,20 @@ class CleanthesAutofillService : AutofillService() {
         try {
         val contexts = request.fillContexts
         if (contexts.isEmpty()) {
+            Log.d(TAG, "onFillRequest: empty fillContexts, skipping")
             callback.onSuccess(null)
             return
         }
         val structure = contexts[contexts.size - 1].structure
         val parsed = StructureParser.parse(structure)
         if (isSelfAutofill(parsed.packageName)) {
+            Log.d(TAG, "onFillRequest: self-autofill on ${parsed.packageName}, skipping")
             callback.onSuccess(null)
             return
         }
 
         if (parsed.usernameId == null || parsed.passwordId == null) {
+            Log.d(TAG, "onFillRequest: no username/password fields found for ${parsed.packageName}")
             callback.onSuccess(null)
             return
         }
@@ -117,6 +120,8 @@ class CleanthesAutofillService : AutofillService() {
                     saveInfoIds,
                 ).build(),
         )
+
+        Log.d(TAG, "onFillRequest: response built for ${parsed.packageName}")
 
         callback.onSuccess(responseBuilder.build())
         } catch (e: Exception) {
