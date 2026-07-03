@@ -46,6 +46,10 @@ class CleanthesAutofillService : AutofillService() {
         callback: FillCallback,
     ) {
         val contexts = request.fillContexts
+        if (contexts.isEmpty()) {
+            callback.onSuccess(null)
+            return
+        }
         val structure = contexts[contexts.size - 1].structure
         val parsed = StructureParser.parse(structure)
 
