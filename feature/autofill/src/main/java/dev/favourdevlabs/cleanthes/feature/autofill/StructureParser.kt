@@ -29,14 +29,14 @@ object StructureParser {
     }
 
     fun parse(structure: AssistStructure): ParsedFields {
+        if (structure.windowNodeCount == 0) return ParsedFields()
+
         val acc = Accumulator()
-        for (i in 0 until structure.windowNodeCount) {
-            val windowNode = structure.getWindowNodeAt(i)
-            windowNode.title?.toString()?.let { title ->
-                if (title.contains("/")) acc.packageName = title.split("/")[0]
-            }
-            traverseNode(windowNode.rootViewNode, acc)
+        val windowNode = structure.getWindowNodeAt(structure.windowNodeCount - 1)
+        windowNode.title?.toString()?.let { title ->
+            if (title.contains("/")) acc.packageName = title.split("/")[0]
         }
+        traverseNode(windowNode.rootViewNode, acc)
         return resolve(acc)
     }
 
@@ -46,7 +46,9 @@ object StructureParser {
     ) {
         if (node == null) return
 
-        node.webDomain?.let { acc.webDomain = it }
+        node.webDomain?.let { domain ->
+            if (domain.isNotBlank()) acc.webDomain = "https://$domain"
+        }
 
         if (isSupportedInput(node)) {
             classifyNode(node, acc)
