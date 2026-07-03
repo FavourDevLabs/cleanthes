@@ -45,6 +45,7 @@ class CleanthesAutofillService : AutofillService() {
         signal: CancellationSignal,
         callback: FillCallback,
     ) {
+        try {
         val contexts = request.fillContexts
         if (contexts.isEmpty()) {
             callback.onSuccess(null)
@@ -115,6 +116,10 @@ class CleanthesAutofillService : AutofillService() {
         )
 
         callback.onSuccess(responseBuilder.build())
+        } catch (e: Exception) {
+            Log.w(TAG, "onFillRequest failed", e)
+            callback.onSuccess(null)
+          }
     }
 
     override fun onSaveRequest(
