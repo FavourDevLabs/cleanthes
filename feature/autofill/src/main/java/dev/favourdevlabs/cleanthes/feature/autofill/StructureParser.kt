@@ -6,68 +6,100 @@ import android.view.View
 import android.view.autofill.AutofillId
 
 object StructureParser {
+
     data class ParsedFields(
-        // AutofillId of the email/username field
         var usernameId: AutofillId? = null,
-        // AutofillId of the password field
         var passwordId: AutofillId? = null,
-        // e.g. "com.google.android.gm"
+        var repeatPasswordId: AutofillId? = null,
         var packageName: String? = null,
-        // actual site domain if it's a browser
         var webDomain: String? = null,
     )
 
+    private data class Candidate(
+        val id: AutofillId,
+        val isFocused: Boolean,
+        val tier: Int, // 1 = autofillHints, 2 = inputType, 3 = hint text
+    )
+
+    private class Accumulator {
+        val usernames = mutableListOf<Candidate>()
+        val passwords = mutableListOf<Candidate>()
+        var packageName: String? = null
+        var webDomain: String? = null
+    }
+
     fun parse(structure: AssistStructure): ParsedFields {
-        val result = ParsedFields()
+        val acc = Accumulator()
         for (i in 0 until structure.windowNodeCount) {
             val windowNode = structure.getWindowNodeAt(i)
-            // Window title format: "packageName/ActivityName"
             windowNode.title?.toString()?.let { title ->
-                if (title.contains("/")) result.packageName = title.split("/")[0]
+                if (title.contains("/")) acc.packageName = title.split("/")[0]
             }
-            traverseNode(windowNode.rootViewNode, result)
+            traverseNode(windowNode.rootViewNode, acc)
         }
-        return result
+        return resolve(acc)
     }
 
     private fun traverseNode(
         node: AssistStructure.ViewNode?,
-        result: ParsedFields,
+        acc: Accumulator,
     ) {
         if (node == null) return
 
-        node.webDomain?.let { result.webDomain = it }
+        node.webDomain?.let { acc.webDomain = it }
 
-        // --- Primary detection: autofillHints ---
+        if (isSupportedInput(node)) {
+            classifyNode(node, acc)
+        }
+
+        for (i in 0 until node.childCount) traverseNode(node.getChildAt(i), acc)
+    }
+
+    private fun isSupportedInput(node: AssistStructure.ViewNode): Boolean =
+        node.className == "android.widget.EditText" ||
+            node.className == "android.widget.AutoCompleteTextView"
+
+    private fun classifyNode(
+        node: AssistStructure.ViewNode,
+        acc: Accumulator,
+    ) {
+        val id = node.autofillId ?: return
+        val focused = node.isFocused
+
+        // --- Tier 1: explicit autofillHints ---
+        var matchedTier1 = false
         node.autofillHints?.forEach { hint ->
-            if (isUsernameHint(hint)) result.usernameId = node.autofillId
-            if (isPasswordHint(hint)) result.passwordId = node.autofillId
-        }
-
-        // --- Fallback detection: inputType ---
-        if (result.passwordId == null) {
-            val inputType = node.inputType
-            val isPassword =
-                (inputType and InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
-                    (inputType and InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0 ||
-                    (inputType and InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) != 0
-            if (isPassword) result.passwordId = node.autofillId
-        }
-
-        // --- Fallback detection: hint text ---
-        if (result.usernameId == null) {
-            node.hint?.toString()?.lowercase()?.let { hintStr ->
-                if (hintStr.contains("email") ||
-                    hintStr.contains("username") ||
-                    hintStr.contains("user name") ||
-                    hintStr.contains("phone")
-                ) {
-                    result.usernameId = node.autofillId
-                }
+            if (isUsernameHint(hint)) {
+                acc.usernames.add(Candidate(id, focused, tier = 1))
+                matchedTier1 = true
+            }
+            if (isPasswordHint(hint)) {
+                acc.passwords.add(Candidate(id, focused, tier = 1))
+                matchedTier1 = true
             }
         }
+        if (matchedTier1) return
 
-        for (i in 0 until node.childCount) traverseNode(node.getChildAt(i), result)
+        // --- Tier 2: inputType ---
+        val inputType = node.inputType
+        val isPasswordType =
+            (inputType and InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0 ||
+                (inputType and InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD) != 0 ||
+                (inputType and InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD) != 0
+        if (isPasswordType) {
+            acc.passwords.add(Candidate(id, focused, tier = 2))
+            return
+        }
+
+        // --- Tier 3: hint text (heuristic, weakest signal — no "phone") ---
+        node.hint?.toString()?.lowercase()?.let { hintStr ->
+            if (hintStr.contains("email") ||
+                hintStr.contains("username") ||
+                hintStr.contains("user name")
+            ) {
+                acc.usernames.add(Candidate(id, focused, tier = 3))
+            }
+        }
     }
 
     private fun isUsernameHint(hint: String): Boolean =
@@ -81,4 +113,22 @@ object StructureParser {
         hint.equals(View.AUTOFILL_HINT_PASSWORD, ignoreCase = true) ||
             hint.equals("password", ignoreCase = true) ||
             hint.equals("current-password", ignoreCase = true)
+
+    private val candidatePriority = compareByDescending<Candidate> { it.isFocused }.thenBy { it.tier }
+
+    private fun resolve(acc: Accumulator): ParsedFields {
+        val bestUsername = acc.usernames.sortedWith(candidatePriority).firstOrNull()
+        val sortedPasswords = acc.passwords.sortedWith(candidatePriority)
+        val bestPassword = sortedPasswords.firstOrNull()
+        val repeatPassword = sortedPasswords.drop(1).firstOrNull { it.id != bestPassword?.id }
+
+        return ParsedFields(
+            usernameId = bestUsername?.id,
+            passwordId = bestPassword?.id,
+            repeatPasswordId = repeatPassword?.id,
+            packageName = acc.packageName,
+            webDomain = acc.webDomain,
+        )
+    }
 }
+
