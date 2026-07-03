@@ -13,14 +13,17 @@ import android.service.autofill.Presentations
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveInfo
 import android.service.autofill.SaveRequest
+import android.util.Log
 import android.view.autofill.AutofillId
 import android.widget.RemoteViews
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
-import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +32,13 @@ class CleanthesAutofillService : AutofillService() {
     @Inject lateinit var sessionManager: SessionManager
 
     @Inject lateinit var repository: VaultRepository
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
 
     override fun onFillRequest(
         request: FillRequest,
@@ -110,42 +120,53 @@ class CleanthesAutofillService : AutofillService() {
         }
 
         val contexts = request.fillContexts
-        val structure = contexts[contexts.size - 1].structure
-        val parsed = StructureParser.parse(structure)
-
-        if (parsed.usernameId == null || parsed.passwordId == null) {
+        if (contexts.isEmpty()) {
             callback.onSuccess()
             return
         }
 
-        val username = extractValue(structure, parsed.usernameId!!)
-        val password = extractValue(structure, parsed.passwordId!!)
+        val structure = contexts[contexts.size - 1].structure
+        val parsed = StructureParser.parse(structure)
+        val usernameId = parsed.usernameId
+        val passwordId = parsed.passwordId
+
+        if (usernameId == null || passwordId == null) {
+            callback.onSuccess()
+            return
+        }
+
+        val username = extractValue(structure, usernameId)
+        val password = extractValue(structure, passwordId)
         val key = parsed.webDomain ?: parsed.packageName ?: ""
 
-        if (username != null && password != null) {
-            try {
-                @OptIn(DelicateCoroutinesApi::class)
-                GlobalScope.launch(Dispatchers.IO) {
-                    repository.addEntry(
-                        title = key,
-                        userName = username,
-                        plainPassword = password,
-                        website = key,
-                        category = "Autofill",
-                        notes = null,
-                        isFavorite = false,
-                        plainTotpSecret = null,
-                        totpIssuer = null,
-                        totpDigits = 6,
-                        totpPeriod = 30,
-                        totpAlgorithm = "SHA1",
-                        key = secretKey,
-                    )
-                }
-            } catch (_: Exception) {
-            }
+        if (username == null || password == null) {
+            callback.onSuccess()
+            return
         }
-        callback.onSuccess()
+
+        val handler = CoroutineExceptionHandler { _, exception ->
+            Log.w(TAG, "onSaveRequest: failed to persist entry", exception)
+            callback.onFailure("Could not save to Cleanthes")
+        }
+
+        serviceScope.launch(handler) {
+            repository.addEntry(
+                title = key,
+                userName = username,
+                plainPassword = password,
+                website = key,
+                category = "Autofill",
+                notes = null,
+                isFavorite = false,
+                plainTotpSecret = null,
+                totpIssuer = null,
+                totpDigits = 6,
+                totpPeriod = 30,
+                totpAlgorithm = "SHA1",
+                key = secretKey,
+            )
+            callback.onSuccess()
+        }
     }
 
     private fun extractValue(
@@ -172,5 +193,9 @@ class CleanthesAutofillService : AutofillService() {
             if (r != null) return r
         }
         return null
+    }
+
+    companion object {
+        private const val TAG = "CleanthesAutofillService"
     }
 }
