@@ -52,6 +52,10 @@ class CleanthesAutofillService : AutofillService() {
         }
         val structure = contexts[contexts.size - 1].structure
         val parsed = StructureParser.parse(structure)
+        if (isSelfAutofill(parsed.packageName)) {
+            callback.onSuccess(null)
+            return
+        }
 
         if (parsed.usernameId == null || parsed.passwordId == null) {
             callback.onSuccess(null)
@@ -198,6 +202,8 @@ class CleanthesAutofillService : AutofillService() {
         }
         return null
     }
+
+    private fun isSelfAutofill(parsedPackageName: String?): Boolean = parsedPackageName == packageName
 
     companion object {
         private const val TAG = "CleanthesAutofillService"
