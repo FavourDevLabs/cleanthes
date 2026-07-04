@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.service.autofill.FillResponse
+import android.util.Log
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
@@ -24,6 +25,7 @@ import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.URI
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,6 +35,7 @@ class AutofillAuthActivity : SecureActivity() {
     @Inject lateinit var repository: VaultRepository
 
     companion object {
+        private const val TAG = "AutofillAuthActivity"
         const val EXTRA_PACKAGE_NAME = "pkg"
         const val EXTRA_WEB_DOMAIN = "domain"
         const val EXTRA_USERNAME_ID = "uid"
@@ -72,6 +75,7 @@ class AutofillAuthActivity : SecureActivity() {
                     code: Int,
                     msg: CharSequence,
                 ) {
+                    Log.w(TAG, "biometric auth error: $code $msg")
                     setResult(RESULT_CANCELED)
                     finish()
                 }
@@ -90,6 +94,7 @@ class AutofillAuthActivity : SecureActivity() {
         val secretKey =
             sessionManager.getSessionKey()
                 ?: run {
+                    Log.w(TAG, "deliver: no session key, session locked or expired")
                     setResult(RESULT_CANCELED)
                     finish()
                     return
@@ -100,6 +105,13 @@ class AutofillAuthActivity : SecureActivity() {
         val webDomain = intent.getStringExtra(EXTRA_WEB_DOMAIN)
         val lookupKey = webDomain ?: packageName
 
+        if (usernameId == null || passwordId == null) {
+            Log.w(TAG, "deliver: missing usernameId/passwordId in auth intent")
+            setResult(RESULT_CANCELED)
+            finish()
+            return
+        }
+
         lifecycleScope.launch {
             try {
                 val matches =
@@ -107,6 +119,7 @@ class AutofillAuthActivity : SecureActivity() {
                         filter(repository.getAllEntries(secretKey), lookupKey)
                     }
                 if (matches.isEmpty()) {
+                    Log.d(TAG, "deliver: no matching entries for $lookupKey")
                     setResult(RESULT_CANCELED)
                     finish()
                     return@launch
@@ -116,8 +129,8 @@ class AutofillAuthActivity : SecureActivity() {
                     response.addDataset(
                         DatasetBuilder.build(
                             this@AutofillAuthActivity,
-                            usernameId!!,
-                            passwordId!!,
+                            usernameId,
+                            passwordId,
                             entry,
                         ),
                     )
@@ -130,7 +143,8 @@ class AutofillAuthActivity : SecureActivity() {
                         response.build(),
                     ),
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "deliver failed", e)
                 setResult(RESULT_CANCELED)
             }
             finish()
@@ -150,11 +164,26 @@ class AutofillAuthActivity : SecureActivity() {
         key: String?,
     ): List<VaultItem> {
         if (key.isNullOrEmpty()) return emptyList()
-        val lower = key.lowercase()
+        val targetHost = registrableDomain(key) ?: key.lowercase()
         return entries.filter { e ->
-            val website = e.website?.lowercase() ?: ""
-            val title = e.title.lowercase()
-            website.contains(lower) || lower.contains(website) || title.contains(lower)
+            val entryHost = e.website?.let { registrableDomain(it) }
+            val hostMatch = entryHost != null && entryHost == targetHost
+            val titleMatch = e.title.lowercase() == targetHost
+            hostMatch || titleMatch
         }
     }
+
+    private fun registrableDomain(input: String): String? {
+        val candidate = if (input.contains("://")) input else "https://$input"
+        val host =
+            try {
+                URI(candidate).host
+            } catch (_: Exception) {
+                null
+            } ?: return null
+        val lower = host.lowercase()
+        val parts = lower.split(".")
+        return if (parts.size >= 2) parts.takeLast(2).joinToString(".") else lower
+    }
 }
+
