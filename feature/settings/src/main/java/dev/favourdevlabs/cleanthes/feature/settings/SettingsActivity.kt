@@ -51,26 +51,16 @@ import dev.favourdevlabs.cleanthes.ui.theme.SurfaceModal
 import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
 import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 
-// File-level — accessible to private composables in this file
-private val LOCK_VALUES = intArrayOf(1, 5, 15, -1)
-private val LOCK_LABELS = arrayOf("1 min", "5 min", "15 min", "Never")
-private val CLIP_VALUES = intArrayOf(30, 60, -1)
-private val CLIP_LABELS = arrayOf("30s", "60s", "Off")
-
 @AndroidEntryPoint
 class SettingsActivity : AuthenticatedActivity() {
     companion object {
         private const val PREFS_NAME = "cleanthes_prefs"
-        const val KEY_AUTO_LOCK = "auto_lock_minutes"
-        const val KEY_CLIPBOARD = "clipboard_clear_seconds"
     }
 
     private lateinit var prefs: SharedPreferences
     private lateinit var autofillManager: AutofillManager
 
-    // Compose-observable state — mutated by callbacks and onResume
-    private var autoLockMinutes by mutableStateOf(5)
-    private var clipboardSeconds by mutableStateOf(30)
+    // Compose-observable state — mutated by onResume
     private var autofillActive by mutableStateOf(false)
 
     private val versionName: String by lazy {
@@ -86,24 +76,11 @@ class SettingsActivity : AuthenticatedActivity() {
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         autofillManager = getSystemService(AutofillManager::class.java)
 
-        autoLockMinutes = prefs.getInt(KEY_AUTO_LOCK, 5)
-        clipboardSeconds = prefs.getInt(KEY_CLIPBOARD, 30)
-
         setContent {
             CleanthesTheme {
                 SettingsScreen(
-                    autoLockMinutes = autoLockMinutes,
-                    clipboardSeconds = clipboardSeconds,
                     autofillActive = autofillActive,
                     versionName = versionName,
-                    onAutoLockChange = { minutes ->
-                        prefs.edit().putInt(KEY_AUTO_LOCK, minutes).apply()
-                        autoLockMinutes = minutes
-                    },
-                    onClipboardChange = { seconds ->
-                        prefs.edit().putInt(KEY_CLIPBOARD, seconds).apply()
-                        clipboardSeconds = seconds
-                    },
                     onAutofillClick = {
                         startActivity(
                             Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
@@ -127,21 +104,12 @@ class SettingsActivity : AuthenticatedActivity() {
 
 @Composable
 private fun SettingsScreen(
-    autoLockMinutes: Int,
-    clipboardSeconds: Int,
     autofillActive: Boolean,
     versionName: String,
-    onAutoLockChange: (Int) -> Unit,
-    onClipboardChange: (Int) -> Unit,
     onAutofillClick: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var showAutoLockDialog by remember { mutableStateOf(false) }
-    var showClipboardDialog by remember { mutableStateOf(false) }
     var showLicensesDialog by remember { mutableStateOf(false) }
-
-    val autoLockLabel = if (autoLockMinutes == -1) "Never" else "$autoLockMinutes min"
-    val clipboardLabel = if (clipboardSeconds == -1) "Off" else "${clipboardSeconds}s"
 
     Column(
         modifier =
@@ -158,24 +126,8 @@ private fun SettingsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(top = 24.dp, bottom = 40.dp),
         ) {
-            // ── VAULT ─────────────────────────────────────────────────────────
-            SectionHeader("VAULT")
-            SettingsRow(
-                title = "Auto-lock after",
-                value = autoLockLabel,
-                showChevron = true,
-                onClick = { showAutoLockDialog = true },
-            )
-            RowDivider()
-            SettingsRow(
-                title = "Clear clipboard after",
-                value = clipboardLabel,
-                showChevron = true,
-                onClick = { showClipboardDialog = true },
-            )
-
             // ── AUTOFILL ──────────────────────────────────────────────────────
-            SectionHeader("AUTOFILL", topPadding = 28.dp)
+            SectionHeader("AUTOFILL")
             SettingsRow(
                 title = "Provider",
                 value = if (autofillActive) "Active ✓" else "Enable ›",
@@ -203,28 +155,6 @@ private fun SettingsScreen(
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
-    if (showAutoLockDialog) {
-        PickerDialog(
-            title = "Auto-lock after",
-            labels = LOCK_LABELS.toList(),
-            onSelect = { i ->
-                onAutoLockChange(LOCK_VALUES[i])
-                showAutoLockDialog = false
-            },
-            onDismiss = { showAutoLockDialog = false },
-        )
-    }
-    if (showClipboardDialog) {
-        PickerDialog(
-            title = "Clear clipboard after",
-            labels = CLIP_LABELS.toList(),
-            onSelect = { i ->
-                onClipboardChange(CLIP_VALUES[i])
-                showClipboardDialog = false
-            },
-            onDismiss = { showClipboardDialog = false },
-        )
-    }
     if (showLicensesDialog) {
         LicensesDialog(onDismiss = { showLicensesDialog = false })
     }
@@ -333,44 +263,6 @@ private fun RowDivider() {
     HorizontalDivider(
         color = SurfaceModal,
         modifier = Modifier.padding(start = 16.dp),
-    )
-}
-
-@Composable
-private fun PickerDialog(
-    title: String,
-    labels: List<String>,
-    onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-        },
-        text = {
-            Column {
-                labels.forEachIndexed { index, label ->
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextPrimary,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(index) }
-                                .padding(vertical = 14.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
-            }
-        },
-        containerColor = SurfaceElevated,
     )
 }
 
