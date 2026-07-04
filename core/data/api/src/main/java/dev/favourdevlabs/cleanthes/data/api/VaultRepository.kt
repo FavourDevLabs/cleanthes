@@ -37,6 +37,8 @@ interface VaultRepository {
 
     suspend fun searchEntries(query: String, key: SecretKey): List<VaultItem>
 
+    suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<VaultItem>
+
     suspend fun getEntriesByCategory(category: String, key: SecretKey): List<VaultItem>
 
     suspend fun getFavoriteEntries(key: SecretKey): List<VaultItem>

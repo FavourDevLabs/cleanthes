@@ -115,8 +115,12 @@ class AutofillAuthActivity : SecureActivity() {
         lifecycleScope.launch {
             try {
                 val matches =
-                    withContext(Dispatchers.IO) {
-                        filter(repository.getAllEntries(secretKey), lookupKey)
+                    if (lookupKey.isNullOrEmpty()) {
+                        emptyList()
+                    } else {
+                        withContext(Dispatchers.IO) {
+                            filter(repository.getEntriesByDomainCandidate(lookupKey, secretKey), lookupKey)
+                        }
                     }
                 if (matches.isEmpty()) {
                     Log.d(TAG, "deliver: no matching entries for $lookupKey")

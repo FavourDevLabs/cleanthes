@@ -43,6 +43,14 @@ interface VaultDao {
     """)
     suspend fun getEntriesByCategory(category: String): List<VaultEntry>
 
+    @Query("""
+        SELECT * FROM vault_entries
+        WHERE website LIKE '%' || :domain || '%'
+           OR title LIKE '%' || :domain || '%'
+        ORDER BY isFavorite DESC, title ASC
+    """)
+    suspend fun getEntriesByDomainCandidate(domain: String): List<VaultEntry>
+
     @Query("SELECT * FROM vault_entries WHERE isFavorite = 1 ORDER BY title ASC")
     suspend fun getFavoriteEntries(): List<VaultEntry>
 

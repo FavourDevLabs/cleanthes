@@ -94,6 +94,11 @@ class VaultRepositoryImpl @Inject constructor(
             vaultDao.searchEntries(query).map { decrypt(it, key).toDomain() }
         }
 
+    override suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<VaultItem> =
+        withContext(Dispatchers.IO) {
+            vaultDao.getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
+        }
+
     override suspend fun getEntriesByCategory(category: String, key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
             vaultDao.getEntriesByCategory(category).map { decrypt(it, key).toDomain() }
