@@ -39,4 +39,5 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.59")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("com.caverock:androidsvg-aar:1.4")
 }
