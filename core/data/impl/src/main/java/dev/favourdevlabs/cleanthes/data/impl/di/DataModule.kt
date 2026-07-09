@@ -22,6 +22,8 @@ import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVault
+import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
+import dev.favourdevlabs.cleanthes.data.impl.usecase.GetFaviconIconImpl
 import javax.inject.Singleton
 
 @Module
@@ -54,5 +56,8 @@ abstract class DataModule {
 
     @Binds @Singleton
     abstract fun bindLoadVaultCredentials(impl: LoadVaultCredentialsImpl): LoadVaultCredentials
+
+    @Binds @Singleton
+    abstract fun bindGetFaviconIcon(impl: GetFaviconIconImpl): GetFaviconIcon
 }
 
