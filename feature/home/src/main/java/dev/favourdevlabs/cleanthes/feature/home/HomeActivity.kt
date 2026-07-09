@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -78,6 +80,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import dev.favourdevlabs.cleanthes.ui.components.HexagonShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -331,6 +334,7 @@ private fun HomeScreen(
                                 ) {
                                     EntryCard(
                                         entry = entry,
+                                        icon = uiState.icons[entry.id],
                                         onEntryClick = onEntryClick,
                                         onCopyClick = onCopyPassword,
                                     )
@@ -453,6 +457,7 @@ private fun SwipeDeleteBackground(state: SwipeToDismissBoxState) {
 @Composable
 private fun EntryCard(
     entry: VaultItem,
+    icon: ImageBitmap?,
     onEntryClick: (VaultItem) -> Unit,
     onCopyClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -473,38 +478,41 @@ private fun EntryCard(
         ) {
             // Avatar
             Box(modifier = Modifier.size(44.dp)) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(avatarColor(entry)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text =
-                            entry.title
-                                .firstOrNull()
-                                ?.uppercaseChar()
-                                ?.toString() ?: "?",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                // TOTP indicator dot
-                if (entry.hasTOTP()) {
+                if (icon != null) {
                     Box(
                         modifier =
                             Modifier
-                                .size(10.dp)
-                                .align(Alignment.TopEnd)
-                                .clip(CircleShape)
-                                .background(GoldBright)
-                                .then(
-                                    Modifier.clip(CircleShape),
-                                ),
-                    )
+                                .fillMaxSize()
+                                .clip(HexagonShape)
+                                .background(SurfaceModal),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            bitmap = icon,
+                            contentDescription = null,
+                            modifier = Modifier.padding(8.dp),
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(HexagonShape)
+                                .background(avatarColor(entry)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                       Text(
+                            text =
+                                entry.title
+                                    .firstOrNull()
+                                    ?.uppercaseChar()
+                                    ?.toString() ?: "?",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
 
@@ -537,6 +545,7 @@ private fun EntryCard(
         }
     }
 }
+
 
 @Composable
 private fun EmptyState(
