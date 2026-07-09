@@ -1,18 +1,23 @@
 package dev.favourdevlabs.cleanthes.feature.home
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
 import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
+import dev.favourdevlabs.cleanthes.ui.components.decodeFaviconBitmap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -24,6 +29,7 @@ data class HomeUiState(
     val selectedCategory: String = "All",
     val pendingDeleteIds: Set<Long> = emptySet(),
     val errorMessage: String? = null,
+    val icons: Map<Long, ImageBitmap> = emptyMap(),
 ) {
     val filteredEntries: List<VaultItem>
         get() = entries
@@ -43,6 +49,7 @@ class HomeViewModel @Inject constructor(
     private val deleteVaultEntry: DeleteVaultEntry,
     private val saveVaultEntry: SaveVaultEntry,
     private val sessionManager: SessionManager,
+    private val getFaviconIcon: GetFaviconIcon,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -65,10 +72,36 @@ class HomeViewModel @Inject constructor(
                         entryCount   = result.entries.size,
                     )
                 }
+                loadIconsFor(result.entries)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, errorMessage = "Failed to load entries: ${e.message}")
                 }
+            }
+        }
+    }
+
+    /**
+     * Fetches and decodes a favicon for each entry that has a website set, one independent
+     * coroutine per entry, updating [HomeUiState.icons] incrementally as each arrives —
+     * rather than waiting for every icon before showing any of them.
+     */
+    private fun loadIconsFor(entries: List<VaultItem>) {
+        entries.forEach { entry ->
+            val website = entry.website
+            android.util.Log.d("FaviconDebug", "entry '${entry.title}' has website='$website'")
+            if (website.isNullOrBlank()) return@forEach
+
+            viewModelScope.launch {
+                val result = getFaviconIcon(website)
+                val bytes = result.bytes
+                if (!result.found || bytes == null) return@launch
+
+                val bitmap = withContext(Dispatchers.Default) {
+                    decodeFaviconBitmap(bytes, result.contentType)
+                } ?: return@launch
+
+                _uiState.update { it.copy(icons = it.icons + (entry.id to bitmap)) }
             }
         }
     }
@@ -115,4 +148,3 @@ class HomeViewModel @Inject constructor(
         }
     }
 }
-
