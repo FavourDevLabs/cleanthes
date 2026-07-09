@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.library")
     id("com.google.devtools.ksp")
@@ -8,7 +10,29 @@ android {
     namespace = "dev.favourdevlabs.cleanthes.data.impl"
     compileSdk = 34
 
-    defaultConfig { minSdk = 24 }
+    defaultConfig {
+        minSdk = 24
+
+        val localProperties = Properties().apply {
+            val file = rootProject.file("local.properties")
+            if (file.exists()) load(file.inputStream())
+        }
+
+        buildConfigField(
+            "String",
+            "FAVICON_PROXY_API_KEY",
+            "\"${localProperties.getProperty("FAVICON_PROXY_API_KEY", "")}\"",
+        )
+        buildConfigField(
+            "String",
+            "FAVICON_PROXY_BASE_URL",
+            "\"${localProperties.getProperty("FAVICON_PROXY_BASE_URL", "")}\"",
+        )
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
