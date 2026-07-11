@@ -1,16 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="categories_array">
-        <item>General</item>
-        <item>Banking</item>
-        <item>Social</item>
-        <item>Work</item>
-        <item>Shopping</item>
-        <item>Health</item>
-        <item>Tech</item>
-        <item>Personal</item>
-        <item>Entertainment</item>
-        <item>Travel</item>
-        <item>Finance</item>
+        <item>Foundations</item>
+        <item>Treasury</item>
+        <item>Kinship</item>
+        <item>Vocation</item>
+        <item>Commerce</item>
+        <item>Vessel</item>
+        <item>Instruments</item>
+        <item>Inner Citadel</item>
+        <item>Leisure</item>
+        <item>Journeys</item>
+        <item>Fortune</item>
     </string-array>
 </resources>
