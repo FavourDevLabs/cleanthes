@@ -5,7 +5,6 @@
         <activity
             android:name=".HomeActivity"
             android:exported="false"
-            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustPan"
             android:screenOrientation="portrait" />
     </application>
