@@ -54,6 +54,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import dev.favourdevlabs.cleanthes.security.session.LastScreenHolder
 import dev.favourdevlabs.cleanthes.ui.base.SecureActivity
 import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
@@ -67,10 +68,13 @@ import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
 import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 import javax.crypto.Cipher
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class LoginActivity : SecureActivity() {
     private val viewModel: LoginViewModel by viewModels()
+
+    @Inject lateinit var lastScreenHolder: LastScreenHolder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,13 +84,33 @@ class LoginActivity : SecureActivity() {
                 viewModel.events.collect { event ->
                     when (event) {
                         LoginEvent.NavigateToHome -> {
-                            startActivity(
+                            val captured = lastScreenHolder.consume()
+                            val homeIntent =
                                 Intent().apply {
                                     setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.home.HomeActivity")
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                },
-                            )
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+
+                            if (captured != null) {
+                                val (className, extras) = captured
+                                val targetIntent =
+                                    Intent().apply {
+                                        setClassName(packageName, className)
+                                        extras.forEach { (key, value) ->
+                                            when (value) {
+                                                is String -> putExtra(key, value)
+                                                is Int -> putExtra(key, value)
+                                                is Long -> putExtra(key, value)
+                                                is Boolean -> putExtra(key, value)
+                                                is Float -> putExtra(key, value)
+                                                is Double -> putExtra(key, value)
+                                            }
+                                        }
+                                    }
+                                startActivities(arrayOf(homeIntent, targetIntent))
+                            } else {
+                                startActivity(homeIntent)
+                            }
                             finish()
                         }
                         is LoginEvent.TriggerBiometric -> triggerBiometric(event.cipher)
