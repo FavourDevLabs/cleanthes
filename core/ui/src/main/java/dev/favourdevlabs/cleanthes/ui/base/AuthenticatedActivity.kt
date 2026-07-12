@@ -15,6 +15,7 @@ abstract class AuthenticatedActivity : SecureActivity() {
     override fun onStart() {
         super.onStart()
         if (sessionManager.lockState.value) {
+            onBeforeRedirect()
             captureCurrentScreen()
             redirectToLogin()
         }
@@ -26,6 +27,14 @@ abstract class AuthenticatedActivity : SecureActivity() {
             sessionManager.refreshSession()
         }
     }
+
+    /**
+     * Called once, right before a lock-triggered redirect fires. Subclasses
+     * that hold unsaved, sensitive user input (e.g. an in-progress vault
+     * entry) can override this to snapshot that state so it survives the
+     * Activity's impending finish().
+     */
+    protected open fun onBeforeRedirect() {}
 
     private fun captureCurrentScreen() {
         // Home is the default destination anyway — no need to capture it.

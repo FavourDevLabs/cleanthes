@@ -82,6 +82,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.google.zxing.integration.android.IntentIntegrator
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.common.PasswordGenerator
+import dev.favourdevlabs.cleanthes.feature.addedit.draft.AddEditDraftCache
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
 import dev.favourdevlabs.cleanthes.ui.components.CleanthesPasswordField
 import dev.favourdevlabs.cleanthes.ui.components.PasswordStrengthBar
@@ -97,6 +98,7 @@ import dev.favourdevlabs.cleanthes.ui.theme.TextMuted
 import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
 import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // Replaces IntentIntegrator + onActivityResult — no deprecation warnings
 private class ScanQrContract : ActivityResultContract<Unit, String?>() {
@@ -127,9 +129,18 @@ class AddEditActivity : AuthenticatedActivity() {
 
     private val viewModel: AddEditViewModel by viewModels()
 
+    @Inject lateinit var draftCache: AddEditDraftCache
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.initForEntry(intent.getLongExtra(EXTRA_ENTRY_ID, NO_ENTRY_ID))
+
+        val entryId = intent.getLongExtra(EXTRA_ENTRY_ID, NO_ENTRY_ID)
+        val restoredDraft = draftCache.consume(entryId)
+        if (restoredDraft != null) {
+            viewModel.restoreFromDraft(restoredDraft)
+        } else {
+            viewModel.initForEntry(entryId)
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -149,6 +160,13 @@ class AddEditActivity : AuthenticatedActivity() {
                 )
             }
         }
+    }
+
+    override fun onBeforeRedirect() {
+        draftCache.save(
+            entryId = intent.getLongExtra(EXTRA_ENTRY_ID, NO_ENTRY_ID),
+            state = viewModel.uiState.value,
+        )
     }
 }
 
