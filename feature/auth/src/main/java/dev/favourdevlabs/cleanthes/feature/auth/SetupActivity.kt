@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -57,8 +58,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-
-
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import dev.favourdevlabs.cleanthes.ui.base.SecureActivity
@@ -75,9 +74,9 @@ import dev.favourdevlabs.cleanthes.ui.theme.StrengthVeryWeak
 import dev.favourdevlabs.cleanthes.ui.theme.StrengthWeak
 import dev.favourdevlabs.cleanthes.ui.theme.Success
 import dev.favourdevlabs.cleanthes.ui.theme.SurfaceModal
-import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import dev.favourdevlabs.cleanthes.ui.theme.TextMuted
 import dev.favourdevlabs.cleanthes.ui.theme.TextPrimary
+import dev.favourdevlabs.cleanthes.ui.theme.TextSecondary
 import dev.favourdevlabs.cleanthes.ui.theme.Warning
 import kotlinx.coroutines.launch
 import javax.crypto.Cipher
@@ -162,7 +161,6 @@ class SetupActivity : SecureActivity() {
             },
         )
     }
-
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -171,6 +169,7 @@ class SetupActivity : SecureActivity() {
 private fun SetupScreen(viewModel: SetupViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     if (uiState.showSecondGate) {
         SecondGateScreen(
@@ -333,7 +332,11 @@ private fun SetupScreen(viewModel: SetupViewModel) {
 
         // ── Create button ─────────────────────────────────────────────────────
         Button(
-            onClick = viewModel::attemptSetup,
+            onClick = {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                viewModel.attemptSetup()
+            },
             enabled = uiState.canCreate,
             modifier =
                 Modifier
