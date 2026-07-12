@@ -11,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,6 +51,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +73,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -517,21 +523,33 @@ private fun CategoryDropdown(
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded && enabled,
-        onExpandedChange = { if (enabled) expanded = it },
+        onExpandedChange = {
+            if (enabled) expanded = it
+        },
     ) {
-        OutlinedTextField(
-            value = selected,
-            onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = cleanthesOutlinedTextFieldColors(),
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-        )
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(1.dp, GoldDim, RoundedCornerShape(4.dp))
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = selected,
+                color = TextPrimary,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+        }
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier.background(SurfaceElevated),
+            focusable = false,
         ) {
             categories.forEach { cat ->
                 DropdownMenuItem(
@@ -559,7 +577,6 @@ private fun PasswordGeneratorDialog(
     var preview by remember { mutableStateOf("") }
     var regenKey by remember { mutableStateOf(0) }
 
-    // Regenerate whenever any parameter changes, or regenKey is bumped
     LaunchedEffect(length, uppercase, lowercase, digits, special, regenKey) {
         preview =
             try {
@@ -569,15 +586,28 @@ private fun PasswordGeneratorDialog(
             }
     }
 
-    AlertDialog(
+    Popup(
+        alignment = Alignment.Center,
+        properties =
+            PopupProperties(
+                focusable = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true,
+            ),
         onDismissRequest = onDismiss,
-        containerColor = SurfaceElevated,
-        title = {
-            Text("Forge a Key", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Length control
+    ) {
+        Surface(
+            color = SurfaceElevated,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 6.dp,
+            modifier = Modifier.padding(24.dp).widthIn(max = 340.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("Forge a Key", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -595,19 +625,16 @@ private fun PasswordGeneratorDialog(
                         Text("+", color = GoldPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                // Checkboxes
+
                 GeneratorCheckbox("Uppercase (A-Z)", uppercase) { uppercase = it }
                 GeneratorCheckbox("Lowercase (a-z)", lowercase) { lowercase = it }
                 GeneratorCheckbox("Digits (0-9)", digits) { digits = it }
                 GeneratorCheckbox("Special (!@#\$...)", special) { special = it }
-                // Preview
+
                 if (preview.isNotEmpty()) {
                     Text(
                         text = preview,
-                        style =
-                            MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FontFamily.Monospace,
-                            ),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                         color = GoldPrimary,
                         modifier =
                             Modifier
@@ -616,13 +643,9 @@ private fun PasswordGeneratorDialog(
                                 .padding(12.dp),
                     )
                 } else {
-                    Text(
-                        "Select at least one category",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted,
-                    )
+                    Text("Select at least one category", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                 }
-                // Regenerate
+
                 OutlinedButton(
                     onClick = { regenKey++ },
                     modifier = Modifier.fillMaxWidth(),
@@ -631,25 +654,29 @@ private fun PasswordGeneratorDialog(
                 ) {
                     Text("↻  REGENERATE", style = MaterialTheme.typography.labelLarge)
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (preview.isNotEmpty()) {
-                        onCommit(preview)
-                        onDismiss()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = TextSecondary)
                     }
-                },
-                enabled = preview.isNotEmpty(),
-            ) {
-                Text("Commit to this", color = GoldPrimary)
+                    TextButton(
+                        onClick = {
+                            if (preview.isNotEmpty()) {
+                                onCommit(preview)
+                                onDismiss()
+                            }
+                        },
+                        enabled = preview.isNotEmpty(),
+                    ) {
+                        Text("Commit to this", color = GoldPrimary)
+                    }
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-        },
-    )
+        }
+    }
 }
 
 @Composable
