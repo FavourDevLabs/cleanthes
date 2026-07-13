@@ -1,5 +1,6 @@
 package dev.favourdevlabs.cleanthes.domain.usecase
 
+import dev.favourdevlabs.cleanthes.domain.model.AuditLogItem
 import dev.favourdevlabs.cleanthes.domain.model.VaultItem
 import javax.crypto.SecretKey
 
@@ -32,7 +33,10 @@ interface SaveVaultEntry {
 }
 
 interface GetVaultEntry {
-    suspend operator fun invoke(id: Long, key: SecretKey): VaultItem?
+    suspend operator fun invoke(
+        id: Long,
+        key: SecretKey,
+    ): VaultItem?
 }
 
 interface GetVaultEntries {
@@ -40,6 +44,7 @@ interface GetVaultEntries {
         val entries: List<VaultItem>,
         val categories: List<String>,
     )
+
     suspend operator fun invoke(key: SecretKey): Result
 }
 
@@ -54,8 +59,33 @@ interface UnlockVault {
             val encSalt: String,
             val wrappedVaultKey: String,
         ) : Params
-        data class Biometric(val vaultKey: SecretKey) : Params
+
+        data class Biometric(
+            val vaultKey: SecretKey,
+        ) : Params
     }
+
     suspend operator fun invoke(params: Params)
 }
 
+interface RecordAuditEvent {
+    enum class EventType {
+        UNLOCK_SUCCESS,
+        UNLOCK_FAILURE,
+        ENTRY_VIEWED,
+        ENTRY_CREATED,
+        ENTRY_EDITED,
+        ENTRY_DELETED,
+        EXPORT,
+    }
+
+    suspend operator fun invoke(
+        eventType: EventType,
+        entryId: Long? = null,
+        entryTitle: String? = null,
+    )
+}
+
+interface GetAuditLog {
+    suspend operator fun invoke(): List<AuditLogItem>
+}

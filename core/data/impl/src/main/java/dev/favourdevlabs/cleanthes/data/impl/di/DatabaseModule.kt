@@ -6,6 +6,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.favourdevlabs.cleanthes.data.impl.db.AuditLogDao
 import dev.favourdevlabs.cleanthes.data.impl.db.CleanthesDatabase
 import dev.favourdevlabs.cleanthes.data.impl.db.VaultDao
 import javax.inject.Singleton
@@ -13,13 +14,14 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+    @Provides @Singleton
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+    ): CleanthesDatabase = CleanthesDatabase.getInstance(context)
 
     @Provides @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): CleanthesDatabase =
-        CleanthesDatabase.getInstance(context)
+    fun provideVaultDao(database: CleanthesDatabase): VaultDao = database.vaultDao()
 
     @Provides @Singleton
-    fun provideVaultDao(database: CleanthesDatabase): VaultDao =
-        database.vaultDao()
+    fun provideAuditLogDao(database: CleanthesDatabase): AuditLogDao = database.auditLogDao()
 }
-
