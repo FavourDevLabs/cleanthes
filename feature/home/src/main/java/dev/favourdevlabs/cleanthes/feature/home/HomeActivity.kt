@@ -279,7 +279,7 @@ private fun HomeScreen(
             HorizontalDivider(color = SurfaceModal)
 
             // ── List / empty / loading ────────────────────────────────────────
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     uiState.isLoading -> {
                         CircularProgressIndicator(
