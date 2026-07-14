@@ -109,7 +109,7 @@ dependencies {
     implementation(project(":feature:detail"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:autofill"))
-
+    implementation(project(":feature:auditlog"))
 
     // ── Hilt ─────────────────────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.59")

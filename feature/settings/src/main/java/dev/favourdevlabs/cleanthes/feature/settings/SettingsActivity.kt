@@ -88,6 +88,13 @@ class SettingsActivity : AuthenticatedActivity() {
                             },
                         )
                     },
+                    onAuditLogClick = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.auditlog.AuditLogActivity")
+                            },
+                        )
+                    },
                     onBack = { finish() },
                 )
             }
@@ -101,12 +108,12 @@ class SettingsActivity : AuthenticatedActivity() {
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun SettingsScreen(
     autofillActive: Boolean,
     versionName: String,
     onAutofillClick: () -> Unit,
+    onAuditLogClick: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showLicensesDialog by remember { mutableStateOf(false) }
@@ -134,6 +141,15 @@ private fun SettingsScreen(
                 valueColor = if (autofillActive) Success else GoldPrimary,
                 showChevron = false,
                 onClick = if (!autofillActive) onAutofillClick else null,
+            )
+
+            // ── SECURITY ──────────────────────────────────────────────────────
+            SectionHeader("SECURITY", topPadding = 28.dp)
+            SettingsRow(
+                title = "Activity Log",
+                value = "",
+                showChevron = true,
+                onClick = onAuditLogClick,
             )
 
             // ── ABOUT ─────────────────────────────────────────────────────────
