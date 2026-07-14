@@ -9,6 +9,7 @@ import dev.favourdevlabs.cleanthes.domain.otp.OtpAuthParser
 import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.channels.Channel
@@ -53,6 +54,7 @@ class AddEditViewModel
         private val saveVaultEntry: SaveVaultEntry,
         private val deleteVaultEntry: DeleteVaultEntry,
         private val sessionManager: SessionManager,
+        private val recordAuditEvent: RecordAuditEvent,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AddEditUiState())
         val uiState: StateFlow<AddEditUiState> = _uiState.asStateFlow()
@@ -227,25 +229,28 @@ class AddEditViewModel
                                 totpPeriod = s.totpPeriod,
                             )
                         saveVaultEntry(SaveVaultEntry.Params.Edit(updated, password, key))
+                        recordAuditEvent(RecordAuditEvent.EventType.ENTRY_EDITED, updated.id, updated.title)
                         existingEntry = updated // update in-memory ref only after confirmed success
                     } else {
-                        saveVaultEntry(
-                            SaveVaultEntry.Params.New(
-                                title = title,
-                                username = username,
-                                plainPassword = password,
-                                website = s.website.trim().ifEmpty { null },
-                                category = s.category,
-                                notes = s.notes.trim().ifEmpty { null },
-                                isFavorite = s.isFavorite,
-                                totpSecret = finalTotp,
-                                totpIssuer = finalIssuer,
-                                totpDigits = s.totpDigits,
-                                totpPeriod = s.totpPeriod,
-                                totpAlgorithm = s.totpAlgorithm,
-                                key = key,
-                            ),
-                        )
+                        val newId =
+                            saveVaultEntry(
+                                SaveVaultEntry.Params.New(
+                                    title = title,
+                                    username = username,
+                                    plainPassword = password,
+                                    website = s.website.trim().ifEmpty { null },
+                                    category = s.category,
+                                    notes = s.notes.trim().ifEmpty { null },
+                                    isFavorite = s.isFavorite,
+                                    totpSecret = finalTotp,
+                                    totpIssuer = finalIssuer,
+                                    totpDigits = s.totpDigits,
+                                    totpPeriod = s.totpPeriod,
+                                    totpAlgorithm = s.totpAlgorithm,
+                                    key = key,
+                                ),
+                            )
+                        recordAuditEvent(RecordAuditEvent.EventType.ENTRY_CREATED, newId, title)
                     }
                     _events.send(AddEditEvent.NavigateBack)
                 } catch (_: Exception) {
@@ -259,6 +264,7 @@ class AddEditViewModel
             viewModelScope.launch {
                 try {
                     deleteVaultEntry(entry.id)
+                    recordAuditEvent(RecordAuditEvent.EventType.ENTRY_DELETED, entry.id, entry.title)
                     _events.send(AddEditEvent.NavigateBack)
                 } catch (_: Exception) {
                     _uiState.update { it.copy(showDeleteDialog = false, errorMessage = "Failed to delete entry.") }
