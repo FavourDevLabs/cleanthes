@@ -95,6 +95,20 @@ class SettingsActivity : AuthenticatedActivity() {
                             },
                         )
                     },
+                    onExportClick = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.export.ExportActivity")
+                            },
+                        )
+                    },
+                    onImportClick = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.export.ImportActivity")
+                            },
+                        )
+                    },
                     onBack = { finish() },
                 )
             }
@@ -114,6 +128,8 @@ private fun SettingsScreen(
     versionName: String,
     onAutofillClick: () -> Unit,
     onAuditLogClick: () -> Unit,
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showLicensesDialog by remember { mutableStateOf(false) }
@@ -150,6 +166,19 @@ private fun SettingsScreen(
                 value = "",
                 showChevron = true,
                 onClick = onAuditLogClick,
+            )
+
+            SettingsRow(
+                title = "Export Vault",
+                value = "",
+                showChevron = true,
+                onClick = onExportClick,
+            )
+            SettingsRow(
+                title = "Import Vault",
+                value = "",
+                showChevron = true,
+                onClick = onImportClick,
             )
 
             // ── ABOUT ─────────────────────────────────────────────────────────
