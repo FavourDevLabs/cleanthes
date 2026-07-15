@@ -89,3 +89,23 @@ interface RecordAuditEvent {
 interface GetAuditLog {
     suspend operator fun invoke(): List<AuditLogItem>
 }
+
+interface ExportVault {
+    suspend operator fun invoke(
+        exportPassword: String,
+        key: SecretKey,
+    ): String
+}
+
+interface ImportVault {
+    data class Result(
+        val imported: Int,
+        val skipped: Int,
+    )
+
+    suspend operator fun invoke(
+        encryptedBlob: String,
+        exportPassword: String,
+        key: SecretKey,
+    ): Result
+}
