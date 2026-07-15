@@ -2,9 +2,11 @@ package dev.favourdevlabs.cleanthes
 
 import android.app.Activity
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import android.os.Bundle
 import dagger.hilt.android.HiltAndroidApp
-import dev.favourdevlabs.cleanthes.common.ClipboardHelper
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import javax.inject.Inject
 
@@ -17,6 +19,7 @@ class CleanthesApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(AppLifecycleTracker())
+        createNotificationChannel()
     }
 
     private inner class AppLifecycleTracker : ActivityLifecycleCallbacks {
@@ -48,6 +51,21 @@ class CleanthesApplication : Application() {
 
     private fun onAppBackgrounded() {
         sessionManager.clearSession()
-        ClipboardHelper.clearClipboard(applicationContext)
+        // Clipboard is intentionally left alone here — ClipboardHelper's own
+        // 60-second timer governs clearing uniformly, in-app or backgrounded.
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val channel =
+            NotificationChannel(
+                "clipboard_security",
+                "Clipboard Security",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Notifies you when Cleanthes clears a copied value from the clipboard."
+            }
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
     }
 }

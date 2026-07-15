@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":core:data:api"))
     implementation(project(":core:security:session:api"))
     implementation(project(":core:security"))
+    implementation(project(":core:common"))
 
     val composeBom = "2024.12.01"
     implementation(platform("androidx.compose:compose-bom:$composeBom"))

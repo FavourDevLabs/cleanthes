@@ -1,8 +1,5 @@
 package dev.favourdevlabs.cleanthes.feature.detail
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -58,6 +55,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import dev.favourdevlabs.cleanthes.common.ClipboardHelper
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import dev.favourdevlabs.cleanthes.ui.theme.GoldPrimary
@@ -120,9 +118,8 @@ class DetailActivity : AuthenticatedActivity() {
         label: String,
         value: String,
     ) {
-        (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-            .setPrimaryClip(ClipData.newPlainText(label, value))
-        Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+        ClipboardHelper.copyText(this, value)
+        Toast.makeText(this, "Guarded, briefly. The clipboard forgets in sixty seconds.", Toast.LENGTH_SHORT).show()
     }
 }
 
