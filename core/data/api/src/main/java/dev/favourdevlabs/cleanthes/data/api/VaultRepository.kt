@@ -46,5 +46,7 @@ interface VaultRepository {
     suspend fun getAllCategories(): List<String>
 
     suspend fun getEntryCount(): Int
+
+    suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey)
 }
 

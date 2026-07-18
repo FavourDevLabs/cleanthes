@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import dev.favourdevlabs.cleanthes.data.impl.entities.VaultEntry
 
@@ -15,6 +16,11 @@ interface VaultDao {
 
     @Update
     suspend fun update(entry: VaultEntry): Int
+
+    @Transaction
+    suspend fun updateAll(entries: List<VaultEntry>) {
+        entries.forEach { update(it) }
+    }
 
     @Query("DELETE FROM vault_entries WHERE id = :id")
     suspend fun deleteById(id: Long): Int

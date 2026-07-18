@@ -115,6 +115,23 @@ class VaultRepositoryImpl @Inject constructor(
     override suspend fun getEntryCount(): Int =
         withContext(Dispatchers.IO) { vaultDao.getEntryCount() }
 
+    override suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey): Unit =
+        withContext(Dispatchers.IO) {
+            val entries = vaultDao.getAllEntries()
+            val reencrypted = entries.map { entry ->
+                val decryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, oldKey)
+                val decryptedTotp = if (!entry.totpSecret.isNullOrEmpty()) {
+                    CryptoManager.decrypt(entry.totpSecret!!, oldKey)
+                } else null
+
+                entry.copy(
+                    encryptedPassword = CryptoManager.encrypt(decryptedPassword, newKey),
+                    totpSecret = decryptedTotp?.let { CryptoManager.encrypt(it, newKey) },
+                )
+            }
+            vaultDao.updateAll(reencrypted)
+        }
+
     private fun decrypt(entry: VaultEntry, key: SecretKey): VaultEntry {
         entry.encryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, key)
         if (!entry.totpSecret.isNullOrEmpty()) {
