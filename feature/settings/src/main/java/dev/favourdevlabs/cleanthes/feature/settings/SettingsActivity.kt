@@ -109,6 +109,13 @@ class SettingsActivity : AuthenticatedActivity() {
                             },
                         )
                     },
+                    onRotateKeyClick = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.settings.RotateKeyActivity")
+                            },
+                        )
+                    },
                     onBack = { finish() },
                 )
             }
@@ -130,6 +137,7 @@ private fun SettingsScreen(
     onAuditLogClick: () -> Unit,
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
+    onRotateKeyClick: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showLicensesDialog by remember { mutableStateOf(false) }
@@ -179,6 +187,12 @@ private fun SettingsScreen(
                 value = "",
                 showChevron = true,
                 onClick = onImportClick,
+            )
+            SettingsRow(
+                title = "Rotate Vault Key",
+                value = "",
+                showChevron = true,
+                onClick = onRotateKeyClick,
             )
 
             // ── ABOUT ─────────────────────────────────────────────────────────
