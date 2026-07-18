@@ -77,6 +77,7 @@ interface RecordAuditEvent {
         ENTRY_EDITED,
         ENTRY_DELETED,
         EXPORT,
+        KEY_ROTATED,
     }
 
     suspend operator fun invoke(
@@ -107,5 +108,17 @@ interface ImportVault {
         encryptedBlob: String,
         exportPassword: String,
         key: SecretKey,
+    ): Result
+}
+
+interface RotateVaultKey {
+    data class Result(
+        val newVaultKey: SecretKey,
+        val biometricWasEnabled: Boolean,
+    )
+
+    suspend operator fun invoke(
+        masterPassword: String,
+        currentVaultKey: SecretKey,
     ): Result
 }
