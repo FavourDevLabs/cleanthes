@@ -6,13 +6,13 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_AUTH_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_ENABLED
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_ENC_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_MASTER_HASH
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_VAULT_EXISTS
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
 import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 class InitialiseVaultImpl @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val filenameProvider: VaultFilenameProvider,
 ) : InitialiseVault {
 
     override suspend fun invoke(masterPassword: String, profile: VaultProfile): InitialiseVault.Result =
@@ -38,7 +39,7 @@ class InitialiseVaultImpl @Inject constructor(
 
             EncryptedSharedPreferences.create(
                 context,
-                prefsName(profile),
+                filenameProvider.prefsFileName(profile),
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

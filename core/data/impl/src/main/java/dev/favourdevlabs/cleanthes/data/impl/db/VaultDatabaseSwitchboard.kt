@@ -1,11 +1,10 @@
 package dev.favourdevlabs.cleanthes.data.impl.db
 
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
-
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +23,7 @@ class VaultDatabaseSwitchboard
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val filenameProvider: VaultFilenameProvider,
     ) {
         private val instances = mutableMapOf<VaultProfile, CleanthesDatabase>()
 
@@ -36,7 +36,7 @@ class VaultDatabaseSwitchboard
                 Room.databaseBuilder(
                     context.applicationContext,
                     CleanthesDatabase::class.java,
-                    profile.dbFileName,
+                    filenameProvider.dbFileName(profile),
                 )
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                     .addMigrations(
@@ -75,6 +75,7 @@ class VaultDatabaseSwitchboard
         @Synchronized
         fun destroy(profile: VaultProfile) {
             instances.remove(profile)?.close()
-            context.applicationContext.deleteDatabase(profile.dbFileName)
+            context.applicationContext.deleteDatabase(filenameProvider.dbFileName(profile))
         }
     }
+

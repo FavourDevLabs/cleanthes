@@ -6,10 +6,10 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_ENABLED
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_IV
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_BIOMETRIC
-import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
 import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,6 +25,7 @@ import javax.inject.Inject
  */
 class EnrolBiometricImpl @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val filenameProvider: VaultFilenameProvider,
 ) : EnrolBiometric {
 
     override suspend fun invoke(vaultKey: SecretKey, unlockedCipher: Cipher) =
@@ -39,7 +40,7 @@ class EnrolBiometricImpl @Inject constructor(
 
             EncryptedSharedPreferences.create(
                 context,
-                prefsName(VaultProfile.REAL),
+                filenameProvider.prefsFileName(VaultProfile.REAL),
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

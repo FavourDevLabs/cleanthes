@@ -5,6 +5,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_AUTH_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_ENABLED
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_IV
@@ -13,7 +14,6 @@ import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_MASTER_HASH
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_VAULT_EXISTS
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_BIOMETRIC
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
 import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 class LoadVaultCredentialsImpl @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val filenameProvider: VaultFilenameProvider,
 ) : LoadVaultCredentials {
 
     override suspend fun invoke(profile: VaultProfile): LoadVaultCredentials.Result =
@@ -32,7 +33,7 @@ class LoadVaultCredentialsImpl @Inject constructor(
 
                 val prefs = EncryptedSharedPreferences.create(
                     context,
-                    prefsName(profile),
+                    filenameProvider.prefsFileName(profile),
                     masterKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -62,4 +63,3 @@ class LoadVaultCredentialsImpl @Inject constructor(
             }
         }
 }
-

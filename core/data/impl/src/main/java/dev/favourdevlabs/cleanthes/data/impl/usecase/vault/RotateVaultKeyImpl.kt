@@ -8,9 +8,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
 import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_ENC_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
 import dev.favourdevlabs.cleanthes.domain.usecase.RotateVaultKey
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +23,7 @@ class RotateVaultKeyImpl @Inject constructor(
     private val loadVaultCredentials: LoadVaultCredentials,
     private val vaultRepository: VaultRepository,
     private val switchboard: VaultDatabaseSwitchboard,
+    private val filenameProvider: VaultFilenameProvider,
 ) : RotateVaultKey {
 
     override suspend fun invoke(
@@ -41,9 +42,6 @@ class RotateVaultKeyImpl @Inject constructor(
 
         val newVaultKey = KeyDerivation.generateVaultKey()
 
-        // Re-encrypt every entry as a single atomic transaction before
-        // committing the new key anywhere — if this throws, nothing below
-        // runs and the old key/prefs remain the source of truth.
         vaultRepository.reencryptAllEntries(currentVaultKey, newVaultKey)
 
         val newEncSaltBytes = KeyDerivation.generateSalt()
@@ -57,7 +55,7 @@ class RotateVaultKeyImpl @Inject constructor(
 
         EncryptedSharedPreferences.create(
             context,
-            prefsName(profile),
+            filenameProvider.prefsFileName(profile),
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
