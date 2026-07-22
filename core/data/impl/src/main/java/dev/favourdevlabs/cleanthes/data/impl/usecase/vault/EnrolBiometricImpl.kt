@@ -9,22 +9,29 @@ import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_ENABLED
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_IV
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_BIOMETRIC
-import dev.favourdevlabs.cleanthes.data.impl.prefs.PREFS_NAME
+import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.inject.Inject
 
+/**
+ * Biometric enrollment is REAL-profile-only, deliberately — never
+ * threaded with a profile param. A duress scenario is precisely when
+ * someone can force a fingerprint/face unlock, so the decoy vault must
+ * never be biometric-reachable.
+ */
 class EnrolBiometricImpl @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : EnrolBiometric {
 
     override suspend fun invoke(vaultKey: SecretKey, unlockedCipher: Cipher) =
         withContext(Dispatchers.IO) {
-            val wrappedBytes           = unlockedCipher.doFinal(vaultKey.encoded)
+            val wrappedBytes             = unlockedCipher.doFinal(vaultKey.encoded)
             val wrappedVaultKeyBiometric = Base64.encodeToString(wrappedBytes, Base64.NO_WRAP)
-            val biometricIv            = Base64.encodeToString(unlockedCipher.iv, Base64.NO_WRAP)
+            val biometricIv              = Base64.encodeToString(unlockedCipher.iv, Base64.NO_WRAP)
 
             val masterKey = MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -32,7 +39,7 @@ class EnrolBiometricImpl @Inject constructor(
 
             EncryptedSharedPreferences.create(
                 context,
-                PREFS_NAME,
+                prefsName(VaultProfile.REAL),
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -43,4 +50,3 @@ class EnrolBiometricImpl @Inject constructor(
                 .apply()
         }
 }
-

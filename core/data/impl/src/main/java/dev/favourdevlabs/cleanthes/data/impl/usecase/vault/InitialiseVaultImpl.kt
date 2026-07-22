@@ -12,7 +12,8 @@ import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_ENC_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_MASTER_HASH
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_VAULT_EXISTS
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.data.impl.prefs.PREFS_NAME
+import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +23,7 @@ class InitialiseVaultImpl @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : InitialiseVault {
 
-    override suspend fun invoke(masterPassword: String): InitialiseVault.Result =
+    override suspend fun invoke(masterPassword: String, profile: VaultProfile): InitialiseVault.Result =
         withContext(Dispatchers.IO) {
             val storedHash    = KeyDerivation.hashPassword(masterPassword.toCharArray())
             val encSaltBytes  = KeyDerivation.generateSalt()
@@ -37,7 +38,7 @@ class InitialiseVaultImpl @Inject constructor(
 
             EncryptedSharedPreferences.create(
                 context,
-                PREFS_NAME,
+                prefsName(profile),
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -51,12 +52,11 @@ class InitialiseVaultImpl @Inject constructor(
                 .apply()
 
             InitialiseVault.Result(
-                vaultKey               = vaultKey,
-                encSalt                = encSalt,
+                vaultKey                = vaultKey,
+                encSalt                 = encSalt,
                 wrappedVaultKeyPassword = wrappedVaultKeyPassword,
-                authSaltBase64         = storedHash.saltBase64,
-                masterHashBase64       = storedHash.hashBase64,
+                authSaltBase64          = storedHash.saltBase64,
+                masterHashBase64        = storedHash.hashBase64,
             )
         }
 }
-

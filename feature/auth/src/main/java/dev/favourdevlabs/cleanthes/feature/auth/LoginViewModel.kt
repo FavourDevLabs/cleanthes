@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
+import dev.favourdevlabs.cleanthes.domain.usecase.ActivateVaultProfile
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVault
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
@@ -56,6 +58,7 @@ class LoginViewModel
         private val unlockVault: UnlockVault,
         private val loadVaultCredentials: LoadVaultCredentials,
         private val recordAuditEvent: RecordAuditEvent,
+        private val activateVaultProfile: ActivateVaultProfile,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(LoginUiState())
         val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -63,7 +66,11 @@ class LoginViewModel
         private val _events = Channel<LoginEvent>(Channel.BUFFERED)
         val events = _events.receiveAsFlow()
 
-        private var credentials: LoadVaultCredentials.Result? = null
+        // Biometric unlock is scoped to the REAL profile only — a duress
+        // scenario is precisely when someone can force a fingerprint/face
+        // unlock, so the decoy must never be biometric-reachable.
+        private var realCredentials: LoadVaultCredentials.Result? = null
+        private var decoyCredentials: LoadVaultCredentials.Result? = null
         private var failedAttempts = 0
 
         init {
@@ -72,13 +79,15 @@ class LoginViewModel
 
         private suspend fun loadCredentials() {
             try {
-                val result = loadVaultCredentials()
-                credentials = result
+                val real = loadVaultCredentials(VaultProfile.REAL)
+                val decoy = loadVaultCredentials(VaultProfile.DECOY)
+                realCredentials = real
+                decoyCredentials = decoy
 
                 val biometricAvailable =
-                    result.biometricEnabled &&
-                        result.biometricIv != null &&
-                        result.wrappedVaultKeyBiometric != null
+                    real.biometricEnabled &&
+                        real.biometricIv != null &&
+                        real.wrappedVaultKeyBiometric != null
 
                 _uiState.update { it.copy(showBiometricSection = biometricAvailable) }
                 if (biometricAvailable) requestBiometricAuth()
@@ -101,18 +110,50 @@ class LoginViewModel
             viewModelScope.launch { verifyPassword(state.password) }
         }
 
+        /**
+         * Checks the attempt against BOTH profiles unconditionally, every
+         * time — never short-circuits on the first match. If the decoy
+         * profile doesn't exist, a dummy derivation of identical cost runs
+         * in its place so that timing cannot reveal whether a decoy is
+         * configured. Whoever is holding this app under duress must not be
+         * able to learn anything from response latency.
+         */
         private suspend fun verifyPassword(attempt: String) {
-            val creds = credentials
-            val authSalt = creds?.authSalt ?: return resetLoading("Vault data missing")
-            val masterHash = creds.masterHash ?: return resetLoading("Vault data missing")
+            val real = realCredentials
+            val realSalt = real?.authSalt ?: return resetLoading("Vault data missing")
+            val realHash = real.masterHash ?: return resetLoading("Vault data missing")
+
+            val decoy = decoyCredentials
+            val decoySalt = decoy?.authSalt
+            val decoyHash = decoy?.masterHash
+
             try {
-                val correct =
+                val (realMatch, decoyMatch) =
                     withContext(Dispatchers.IO) {
-                        KeyDerivation.verifyMasterPassword(attempt.toCharArray(), authSalt, masterHash)
+                        val r = KeyDerivation.verifyMasterPassword(attempt.toCharArray(), realSalt, realHash)
+                        val d =
+                            if (decoySalt != null && decoyHash != null) {
+                                KeyDerivation.verifyMasterPassword(attempt.toCharArray(), decoySalt, decoyHash)
+                            } else {
+                                // No decoy configured — burn identical PBKDF2 cost
+                                // against the real salt so response time is
+                                // indistinguishable from the decoy-exists case.
+                                KeyDerivation.verifyMasterPassword(attempt.toCharArray(), realSalt, realHash)
+                                false
+                            }
+                        r to d
                     }
-                if (correct) {
+
+                val matchedProfile =
+                    when {
+                        realMatch -> VaultProfile.REAL
+                        decoyMatch -> VaultProfile.DECOY
+                        else -> null
+                    }
+
+                if (matchedProfile != null) {
                     failedAttempts = 0
-                    unlockWithPassword(attempt)
+                    unlockWithPassword(attempt, matchedProfile)
                 } else {
                     _uiState.update { it.copy(isLoading = false) }
                     handleFailedAttempt()
@@ -122,10 +163,13 @@ class LoginViewModel
             }
         }
 
-        private suspend fun unlockWithPassword(masterPassword: String) {
+        private suspend fun unlockWithPassword(masterPassword: String, profile: VaultProfile) {
             try {
-                val encSalt = credentials?.encSalt ?: throw IllegalStateException("Salt missing")
-                val wrappedVaultKey = credentials?.wrappedVaultKeyPassword ?: throw IllegalStateException("Vault key missing")
+                val creds = if (profile == VaultProfile.REAL) realCredentials else decoyCredentials
+                val encSalt = creds?.encSalt ?: throw IllegalStateException("Salt missing")
+                val wrappedVaultKey = creds.wrappedVaultKeyPassword ?: throw IllegalStateException("Vault key missing")
+
+                activateVaultProfile(profile)
                 unlockVault(UnlockVault.Params.Password(masterPassword, encSalt, wrappedVaultKey))
                 recordAuditEvent(RecordAuditEvent.EventType.UNLOCK_SUCCESS)
                 _events.send(LoginEvent.NavigateToHome)
@@ -145,7 +189,7 @@ class LoginViewModel
             if (state.isAuthenticating || state.isLoading || state.isLockedOut) return
 
             val ivB64 =
-                credentials?.biometricIv ?: run {
+                realCredentials?.biometricIv ?: run {
                     _uiState.update { it.copy(errorMessage = "Biometric data missing") }
                     return
                 }
@@ -168,7 +212,7 @@ class LoginViewModel
         private suspend fun unlockWithBiometric(unlockedCipher: Cipher) {
             try {
                 val wrappedVaultKeyB64 =
-                    credentials?.wrappedVaultKeyBiometric
+                    realCredentials?.wrappedVaultKeyBiometric
                         ?: throw IllegalStateException("Vault key missing")
                 val vaultKey =
                     withContext(Dispatchers.IO) {
@@ -176,6 +220,7 @@ class LoginViewModel
                         val rawKeyBytes = unlockedCipher.doFinal(wrappedBytes)
                         SecretKeySpec(rawKeyBytes, "AES")
                     }
+                activateVaultProfile(VaultProfile.REAL)
                 unlockVault(UnlockVault.Params.Biometric(vaultKey))
                 recordAuditEvent(RecordAuditEvent.EventType.UNLOCK_SUCCESS)
                 _events.send(LoginEvent.NavigateToHome)
@@ -196,7 +241,6 @@ class LoginViewModel
 
         private fun handleFailedAttempt() {
             failedAttempts++
-            viewModelScope.launch { recordAuditEvent(RecordAuditEvent.EventType.UNLOCK_FAILURE) }
             _uiState.update {
                 it.copy(
                     errorMessage = "Wrong password",

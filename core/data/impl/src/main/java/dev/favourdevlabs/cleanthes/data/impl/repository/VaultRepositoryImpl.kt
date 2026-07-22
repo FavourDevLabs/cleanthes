@@ -1,7 +1,7 @@
 package dev.favourdevlabs.cleanthes.data.impl.repository
 
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
-import dev.favourdevlabs.cleanthes.data.impl.db.VaultDao
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
 import dev.favourdevlabs.cleanthes.data.impl.entities.VaultEntry
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toDomain
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toEntity
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 
 @Singleton
 class VaultRepositoryImpl @Inject constructor(
-    private val vaultDao: VaultDao,
+    private val switchboard: VaultDatabaseSwitchboard,
 ) : VaultRepository {
 
     override suspend fun addEntry(
@@ -54,7 +54,7 @@ class VaultRepositoryImpl @Inject constructor(
             totpPeriod        = totpPeriod,
             totpAlgorithm     = totpAlgorithm ?: "SHA1",
         )
-        val id = vaultDao.insert(entry)
+        val id = switchboard.vaultDao().insert(entry)
         if (id != -1L) entry.id = id
         id
     }
@@ -70,54 +70,54 @@ class VaultRepositoryImpl @Inject constructor(
                 CryptoManager.encrypt(item.totpSecret!!, key) else null
             updatedAt = System.currentTimeMillis()
         }
-        vaultDao.update(entity)
+        switchboard.vaultDao().update(entity)
     }
 
     override suspend fun deleteEntry(id: Long): Int =
-        withContext(Dispatchers.IO) { vaultDao.deleteById(id) }
+        withContext(Dispatchers.IO) { switchboard.vaultDao().deleteById(id) }
 
     override suspend fun wipeVault(): Int =
-        withContext(Dispatchers.IO) { vaultDao.deleteAll() }
+        withContext(Dispatchers.IO) { switchboard.vaultDao().deleteAll() }
 
     override suspend fun getAllEntries(key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
-            vaultDao.getAllEntries().map { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().getAllEntries().map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getEntryById(id: Long, key: SecretKey): VaultItem? =
         withContext(Dispatchers.IO) {
-            vaultDao.getEntryById(id)?.let { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().getEntryById(id)?.let { decrypt(it, key).toDomain() }
         }
 
     override suspend fun searchEntries(query: String, key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
-            vaultDao.searchEntries(query).map { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().searchEntries(query).map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
-            vaultDao.getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getEntriesByCategory(category: String, key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
-            vaultDao.getEntriesByCategory(category).map { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().getEntriesByCategory(category).map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getFavoriteEntries(key: SecretKey): List<VaultItem> =
         withContext(Dispatchers.IO) {
-            vaultDao.getFavoriteEntries().map { decrypt(it, key).toDomain() }
+            switchboard.vaultDao().getFavoriteEntries().map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getAllCategories(): List<String> =
-        withContext(Dispatchers.IO) { vaultDao.getAllCategories() }
+        withContext(Dispatchers.IO) { switchboard.vaultDao().getAllCategories() }
 
     override suspend fun getEntryCount(): Int =
-        withContext(Dispatchers.IO) { vaultDao.getEntryCount() }
+        withContext(Dispatchers.IO) { switchboard.vaultDao().getEntryCount() }
 
     override suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey): Unit =
         withContext(Dispatchers.IO) {
-            val entries = vaultDao.getAllEntries()
+            val entries = switchboard.vaultDao().getAllEntries()
             val reencrypted = entries.map { entry ->
                 val decryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, oldKey)
                 val decryptedTotp = if (!entry.totpSecret.isNullOrEmpty()) {
@@ -129,7 +129,7 @@ class VaultRepositoryImpl @Inject constructor(
                     totpSecret = decryptedTotp?.let { CryptoManager.encrypt(it, newKey) },
                 )
             }
-            vaultDao.updateAll(reencrypted)
+            switchboard.vaultDao().updateAll(reencrypted)
         }
 
     private fun decrypt(entry: VaultEntry, key: SecretKey): VaultEntry {

@@ -1,27 +1,24 @@
 package dev.favourdevlabs.cleanthes.data.impl.di
 
-import android.content.Context
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import dev.favourdevlabs.cleanthes.data.impl.db.AuditLogDao
-import dev.favourdevlabs.cleanthes.data.impl.db.CleanthesDatabase
-import dev.favourdevlabs.cleanthes.data.impl.db.VaultDao
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
 import javax.inject.Singleton
 
+/**
+ * VaultDatabaseSwitchboard is @Inject-constructed directly (see its
+ * @Singleton @Inject constructor), so it needs no @Provides here —
+ * Hilt builds it from the constructor. This module is kept as the
+ * single place documenting the DB DI story for the module.
+ *
+ * VaultDao/AuditLogDao are NOT provided as standalone bindings anymore:
+ * which DB file they resolve to depends on the active session profile,
+ * which isn't known at graph-construction time. Repositories must
+ * inject VaultDatabaseSwitchboard directly and call .vaultDao() /
+ * .auditLogDao() per-operation instead of holding a cached DAO reference.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
-object DatabaseModule {
-    @Provides @Singleton
-    fun provideDatabase(
-        @ApplicationContext context: Context,
-    ): CleanthesDatabase = CleanthesDatabase.getInstance(context)
-
-    @Provides @Singleton
-    fun provideVaultDao(database: CleanthesDatabase): VaultDao = database.vaultDao()
-
-    @Provides @Singleton
-    fun provideAuditLogDao(database: CleanthesDatabase): AuditLogDao = database.auditLogDao()
-}
+object DatabaseModule

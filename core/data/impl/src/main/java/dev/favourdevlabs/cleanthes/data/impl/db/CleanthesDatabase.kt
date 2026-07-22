@@ -21,9 +21,6 @@ abstract class CleanthesDatabase : RoomDatabase() {
 
     companion object {
 
-        @Volatile
-        private var INSTANCE: CleanthesDatabase? = null
-
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpSecret TEXT DEFAULT NULL")
@@ -54,19 +51,6 @@ abstract class CleanthesDatabase : RoomDatabase() {
             }
         }
 
-        fun getInstance(context: Context): CleanthesDatabase {
-            return INSTANCE ?: synchronized(this) {
-                Room.databaseBuilder(
-                    context.applicationContext,
-                    CleanthesDatabase::class.java,
-                    "cleanthes.db"
-                )
-                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                .build()
-                .also { INSTANCE = it }
-            }
-        }
     }
 }
 

@@ -7,6 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import dev.favourdevlabs.cleanthes.data.api.AuditLogRepository
 import dev.favourdevlabs.cleanthes.data.api.VaultRepository
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
+import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.ActivateVaultProfileImpl
+import dev.favourdevlabs.cleanthes.domain.usecase.ActivateVaultProfile
 import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
 import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
@@ -88,4 +90,7 @@ abstract class DataModule {
 
     @Binds @Singleton
     abstract fun bindRotateVaultKey(impl: RotateVaultKeyImpl): RotateVaultKey
+
+    @Binds @Singleton
+    abstract fun bindActivateVaultProfile(impl: ActivateVaultProfileImpl): ActivateVaultProfile
 }

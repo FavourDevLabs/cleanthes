@@ -13,7 +13,8 @@ import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_MASTER_HASH
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_VAULT_EXISTS
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_BIOMETRIC
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.data.impl.prefs.PREFS_NAME
+import dev.favourdevlabs.cleanthes.data.impl.prefs.prefsName
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -22,7 +23,7 @@ class LoadVaultCredentialsImpl @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : LoadVaultCredentials {
 
-    override suspend fun invoke(): LoadVaultCredentials.Result =
+    override suspend fun invoke(profile: VaultProfile): LoadVaultCredentials.Result =
         withContext(Dispatchers.IO) {
             try {
                 val masterKey = MasterKey.Builder(context)
@@ -31,7 +32,7 @@ class LoadVaultCredentialsImpl @Inject constructor(
 
                 val prefs = EncryptedSharedPreferences.create(
                     context,
-                    PREFS_NAME,
+                    prefsName(profile),
                     masterKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

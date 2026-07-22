@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
 import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -83,7 +84,7 @@ class SetupViewModel @Inject constructor(
     fun checkVaultExists() {
         viewModelScope.launch {
             try {
-                val result = loadVaultCredentials()
+                val result = loadVaultCredentials(VaultProfile.REAL)
                 if (result.vaultExists) {
                     _navEvents.send(SetupNavEvent.NavigateToLogin)
                 }
@@ -131,7 +132,7 @@ class SetupViewModel @Inject constructor(
 
     private suspend fun performSetup(masterPassword: String) {
         try {
-            val result = initialiseVault(masterPassword)
+            val result = initialiseVault(masterPassword, VaultProfile.REAL)
             pendingVaultKey = result.vaultKey
             _uiState.update { it.copy(isLoading = false, showSecondGate = true) }
         } catch (e: Exception) {
@@ -194,4 +195,3 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch { _navEvents.send(SetupNavEvent.NavigateToHome) }
     }
 }
-

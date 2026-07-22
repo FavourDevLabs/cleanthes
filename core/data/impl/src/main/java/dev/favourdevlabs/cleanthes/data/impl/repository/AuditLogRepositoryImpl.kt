@@ -1,7 +1,7 @@
 package dev.favourdevlabs.cleanthes.data.impl.repository
 
 import dev.favourdevlabs.cleanthes.data.api.AuditLogRepository
-import dev.favourdevlabs.cleanthes.data.impl.db.AuditLogDao
+import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
 import dev.favourdevlabs.cleanthes.data.impl.entities.AuditLogEntry
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toDomain
 import dev.favourdevlabs.cleanthes.domain.model.AuditLogItem
@@ -17,7 +17,7 @@ private val RETENTION_MILLIS = TimeUnit.DAYS.toMillis(30)
 class AuditLogRepositoryImpl
     @Inject
     constructor(
-        private val auditLogDao: AuditLogDao,
+        private val switchboard: VaultDatabaseSwitchboard,
     ) : AuditLogRepository {
         override suspend fun recordEvent(
             eventType: String,
@@ -26,8 +26,8 @@ class AuditLogRepositoryImpl
         ): Unit =
             withContext(Dispatchers.IO) {
                 val now = System.currentTimeMillis()
-                auditLogDao.purgeOlderThan(now - RETENTION_MILLIS)
-                auditLogDao.insert(
+                switchboard.auditLogDao().purgeOlderThan(now - RETENTION_MILLIS)
+                switchboard.auditLogDao().insert(
                     AuditLogEntry(
                         eventType = eventType,
                         entryId = entryId,
@@ -39,6 +39,6 @@ class AuditLogRepositoryImpl
 
         override suspend fun getAllEvents(): List<AuditLogItem> =
             withContext(Dispatchers.IO) {
-                auditLogDao.getAllEntries().map { it.toDomain() }
+                switchboard.auditLogDao().getAllEntries().map { it.toDomain() }
             }
     }

@@ -2,6 +2,7 @@ package dev.favourdevlabs.cleanthes.domain.usecase
 
 import dev.favourdevlabs.cleanthes.domain.model.AuditLogItem
 import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import javax.crypto.SecretKey
 
 interface SaveVaultEntry {
@@ -66,6 +67,11 @@ interface UnlockVault {
     }
 
     suspend operator fun invoke(params: Params)
+}
+
+
+interface ActivateVaultProfile {
+    suspend operator fun invoke(profile: VaultProfile)
 }
 
 interface RecordAuditEvent {

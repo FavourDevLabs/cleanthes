@@ -1,5 +1,7 @@
 package dev.favourdevlabs.cleanthes.data.api.usecase
 
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+
 interface LoadVaultCredentials {
     data class Result(
         val vaultExists: Boolean,
@@ -11,6 +13,5 @@ interface LoadVaultCredentials {
         val biometricIv: String?,
         val biometricEnabled: Boolean,
     )
-    suspend operator fun invoke(): Result
+    suspend operator fun invoke(profile: VaultProfile): Result
 }
-

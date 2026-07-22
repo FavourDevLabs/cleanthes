@@ -1,5 +1,6 @@
 package dev.favourdevlabs.cleanthes.data.api.usecase
 
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
 import javax.crypto.SecretKey
 
 interface InitialiseVault {
@@ -10,6 +11,7 @@ interface InitialiseVault {
         val authSaltBase64: String,
         val masterHashBase64: String,
     )
-    suspend operator fun invoke(masterPassword: String): Result
-}
 
+    /** profile: which vault this credential set belongs to (REAL or DECOY). */
+    suspend operator fun invoke(masterPassword: String, profile: VaultProfile): Result
+}
