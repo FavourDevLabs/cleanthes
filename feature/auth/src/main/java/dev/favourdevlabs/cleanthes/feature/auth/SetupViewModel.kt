@@ -40,6 +40,13 @@ data class SetupUiState(
     val acknowledged: Boolean = false,
     val showSecondGate: Boolean = false,
     val isEnrollingBiometric: Boolean = false,
+    val showThirdGate: Boolean = false,
+    val decoyPassword: String = "",
+    val decoyConfirm: String = "",
+    val decoyPasswordVisible: Boolean = false,
+    val decoyConfirmVisible: Boolean = false,
+    val isCreatingDecoy: Boolean = false,
+    val decoyErrorMessage: String? = null,
 ) {
     val strengthScore: Int get() = computeStrengthScore(password)
 
@@ -52,6 +59,14 @@ data class SetupUiState(
     val canCreate: Boolean get() = acknowledged && !isLoading
 
     enum class MatchState { EMPTY, MATCH, MISMATCH }
+
+    val decoyStrengthScore: Int get() = computeStrengthScore(decoyPassword)
+
+    val decoyMatchState: MatchState get() = when {
+        decoyConfirm.isEmpty()        -> MatchState.EMPTY
+        decoyPassword == decoyConfirm -> MatchState.MATCH
+        else                          -> MatchState.MISMATCH
+    }
 }
 
 private fun computeStrengthScore(password: String): Int {
@@ -80,6 +95,11 @@ class SetupViewModel @Inject constructor(
     val navEvents = _navEvents.receiveAsFlow()
 
     private var pendingVaultKey: SecretKey? = null
+
+    // Held only for the duration of setup, to validate the decoy password
+    // differs from the real one at the third gate. Cleared the moment the
+    // flow finishes (decoy created or skipped) — never persisted.
+    private var pendingMasterPassword: String? = null
 
     fun checkVaultExists() {
         viewModelScope.launch {
@@ -134,6 +154,7 @@ class SetupViewModel @Inject constructor(
         try {
             val result = initialiseVault(masterPassword, VaultProfile.REAL)
             pendingVaultKey = result.vaultKey
+            pendingMasterPassword = masterPassword
             _uiState.update { it.copy(isLoading = false, showSecondGate = true) }
         } catch (e: Exception) {
             android.util.Log.e("CLEANTHES_SETUP", "Setup failed", e)
@@ -170,9 +191,9 @@ class SetupViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 enrolBiometric(vaultKey, unlockedCipher)
-                sessionManager.setSessionKey(vaultKey)
-                pendingVaultKey = null
-                _navEvents.send(SetupNavEvent.NavigateToHome)
+                _uiState.update {
+                    it.copy(isEnrollingBiometric = false, showSecondGate = false, showThirdGate = true)
+                }
             } catch (e: Exception) {
                 android.util.Log.e("CLEANTHES_SETUP", "Biometric wrap failed", e)
                 _uiState.update {
@@ -189,9 +210,70 @@ class SetupViewModel @Inject constructor(
         _uiState.update { it.copy(isEnrollingBiometric = false, errorMessage = message) }
 
     fun skipBiometricEnrollment() {
+        _uiState.update { it.copy(showSecondGate = false, showThirdGate = true) }
+    }
+
+    // ── Third gate: decoy vault ─────────────────────────────────────────────
+
+    fun onDecoyPasswordChange(value: String) =
+        _uiState.update { it.copy(decoyPassword = value, decoyErrorMessage = null) }
+
+    fun onDecoyConfirmChange(value: String) =
+        _uiState.update { it.copy(decoyConfirm = value, decoyErrorMessage = null) }
+
+    fun onDecoyPasswordVisibilityToggle() =
+        _uiState.update { it.copy(decoyPasswordVisible = !it.decoyPasswordVisible) }
+
+    fun onDecoyConfirmVisibilityToggle() =
+        _uiState.update { it.copy(decoyConfirmVisible = !it.decoyConfirmVisible) }
+
+    fun attemptCreateDecoy() {
+        val state = _uiState.value
+        val decoyPassword = state.decoyPassword
+        val decoyConfirm = state.decoyConfirm
+        val realPassword = pendingMasterPassword
+
+        val error = when {
+            decoyPassword.length < MIN_PASSWORD_LENGTH ->
+                "Decoy password must be at least $MIN_PASSWORD_LENGTH characters"
+            !decoyPassword.any { it.isDigit() } ->
+                "Decoy password must contain at least one number"
+            !decoyPassword.any { it in "!@#\$%^&*()_+-=[]{}|;':\",./<>?" } ->
+                "Decoy password must contain a special character"
+            decoyPassword != decoyConfirm ->
+                "Decoy passwords do not match"
+            realPassword != null && decoyPassword == realPassword ->
+                "The decoy must be a stranger to your true gate — choose a different password"
+            else -> null
+        }
+
+        if (error != null) { _uiState.update { it.copy(decoyErrorMessage = error) }; return }
+
+        _uiState.update { it.copy(isCreatingDecoy = true, decoyErrorMessage = null) }
+        viewModelScope.launch { performDecoyCreation(decoyPassword) }
+    }
+
+    private suspend fun performDecoyCreation(decoyPassword: String) {
+        try {
+            initialiseVault(decoyPassword, VaultProfile.DECOY)
+            finishSetup()
+        } catch (e: Exception) {
+            android.util.Log.e("CLEANTHES_SETUP", "Decoy creation failed", e)
+            _uiState.update {
+                it.copy(isCreatingDecoy = false, decoyErrorMessage = "The second vault could not be sealed. Try again.")
+            }
+        }
+    }
+
+    fun skipDecoyCreation() {
+        viewModelScope.launch { finishSetup() }
+    }
+
+    private suspend fun finishSetup() {
         val vaultKey = pendingVaultKey
         pendingVaultKey = null
+        pendingMasterPassword = null
         if (vaultKey != null) sessionManager.setSessionKey(vaultKey)
-        viewModelScope.launch { _navEvents.send(SetupNavEvent.NavigateToHome) }
+        _navEvents.send(SetupNavEvent.NavigateToHome)
     }
 }

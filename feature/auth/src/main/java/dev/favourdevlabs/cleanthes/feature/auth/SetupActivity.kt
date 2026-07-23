@@ -181,6 +181,19 @@ private fun SetupScreen(viewModel: SetupViewModel) {
         return
     }
 
+    if (uiState.showThirdGate) {
+        ThirdGateScreen(
+            uiState = uiState,
+            onDecoyPasswordChange = viewModel::onDecoyPasswordChange,
+            onDecoyConfirmChange = viewModel::onDecoyConfirmChange,
+            onDecoyPasswordVisibilityToggle = viewModel::onDecoyPasswordVisibilityToggle,
+            onDecoyConfirmVisibilityToggle = viewModel::onDecoyConfirmVisibilityToggle,
+            onCreate = viewModel::attemptCreateDecoy,
+            onSkip = viewModel::skipDecoyCreation,
+        )
+        return
+    }
+
     Column(
         modifier =
             Modifier
@@ -478,6 +491,156 @@ private fun SecondGateScreen(
                     color = TextSecondary,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ThirdGateScreen(
+    uiState: SetupUiState,
+    onDecoyPasswordChange: (String) -> Unit,
+    onDecoyConfirmChange: (String) -> Unit,
+    onDecoyPasswordVisibilityToggle: () -> Unit,
+    onDecoyConfirmVisibilityToggle: () -> Unit,
+    onCreate: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp)
+                .padding(top = 72.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = GoldPrimary,
+                modifier = Modifier.size(44.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "A Second Citadel",
+                style = MaterialTheme.typography.headlineLarge,
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Fortune may compel you to open the gate against your will.\n" +
+                    "Give it a second face — one that yields nothing.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CleanthesPasswordField(
+                value = uiState.decoyPassword,
+                onValueChange = onDecoyPasswordChange,
+                label = "The false gate's word",
+                visible = uiState.decoyPasswordVisible,
+                onVisibilityToggle = onDecoyPasswordVisibilityToggle,
+                imeAction = ImeAction.Next,
+                onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+            )
+            PasswordStrengthBar(score = uiState.decoyStrengthScore)
+            AnimatedVisibility(visible = uiState.decoyPassword.isNotEmpty()) {
+                Text(
+                    text = strengthLabel(uiState.decoyStrengthScore),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = strengthColor(uiState.decoyStrengthScore),
+                )
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CleanthesPasswordField(
+                value = uiState.decoyConfirm,
+                onValueChange = onDecoyConfirmChange,
+                label = "Speak it again",
+                visible = uiState.decoyConfirmVisible,
+                onVisibilityToggle = onDecoyConfirmVisibilityToggle,
+                imeAction = ImeAction.Done,
+                onImeAction = {
+                    focusManager.clearFocus()
+                    onCreate()
+                },
+            )
+            AnimatedVisibility(visible = uiState.decoyMatchState != SetupUiState.MatchState.EMPTY) {
+                val (text, color) =
+                    when (uiState.decoyMatchState) {
+                        SetupUiState.MatchState.MATCH -> "✓ Passwords match" to Success
+                        SetupUiState.MatchState.MISMATCH -> "✗ Passwords do not match" to Danger
+                        SetupUiState.MatchState.EMPTY -> "" to Color.Transparent
+                    }
+                Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
+            }
+        }
+
+        AnimatedVisibility(visible = uiState.decoyErrorMessage != null) {
+            uiState.decoyErrorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Button(
+            onClick = {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                onCreate()
+            },
+            enabled = !uiState.isCreatingDecoy,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = GoldPrimary,
+                    contentColor = OnGold,
+                    disabledContainerColor = GoldPrimary.copy(alpha = 0.3f),
+                    disabledContentColor = OnGold.copy(alpha = 0.3f),
+                ),
+        ) {
+            if (uiState.isCreatingDecoy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = OnGold,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text(text = "SEAL THE SECOND GATE", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        TextButton(
+            onClick = onSkip,
+            enabled = !uiState.isCreatingDecoy,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = "Not Now — I Will Return",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+            )
         }
     }
 }
