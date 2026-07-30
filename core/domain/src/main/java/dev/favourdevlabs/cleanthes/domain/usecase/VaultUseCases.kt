@@ -74,6 +74,11 @@ interface ActivateVaultProfile {
     suspend operator fun invoke(profile: VaultProfile)
 }
 
+interface GetActiveVaultProfile {
+    /** Returns the currently active profile, or null if the session is locked. */
+    suspend operator fun invoke(): VaultProfile?
+}
+
 interface RecordAuditEvent {
     enum class EventType {
         UNLOCK_SUCCESS,

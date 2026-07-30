@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +42,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveVaultProfile
+import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
@@ -59,9 +64,12 @@ class SettingsActivity : AuthenticatedActivity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var autofillManager: AutofillManager
+    @Inject lateinit var getActiveVaultProfile: GetActiveVaultProfile
 
     // Compose-observable state — mutated by onResume
     private var autofillActive by mutableStateOf(false)
+
+    private var showDecoyOption by mutableStateOf(false)
 
     private val versionName: String by lazy {
         try {
@@ -75,6 +83,10 @@ class SettingsActivity : AuthenticatedActivity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         autofillManager = getSystemService(AutofillManager::class.java)
+
+        lifecycleScope.launch {
+            showDecoyOption = getActiveVaultProfile() == VaultProfile.REAL
+        }
 
         setContent {
             CleanthesTheme {
@@ -116,6 +128,14 @@ class SettingsActivity : AuthenticatedActivity() {
                             },
                         )
                     },
+                    showDecoyOption = showDecoyOption,
+                    onSetupDecoyClick = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.settings.SetupDecoyActivity")
+                            },
+                        )
+                    },
                     onBack = { finish() },
                 )
             }
@@ -133,11 +153,13 @@ class SettingsActivity : AuthenticatedActivity() {
 private fun SettingsScreen(
     autofillActive: Boolean,
     versionName: String,
+    showDecoyOption: Boolean,
     onAutofillClick: () -> Unit,
     onAuditLogClick: () -> Unit,
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
     onRotateKeyClick: () -> Unit,
+    onSetupDecoyClick: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showLicensesDialog by remember { mutableStateOf(false) }
@@ -194,6 +216,14 @@ private fun SettingsScreen(
                 showChevron = true,
                 onClick = onRotateKeyClick,
             )
+            if (showDecoyOption) {
+                SettingsRow(
+                    title = "Set Up Decoy Vault",
+                    value = "",
+                    showChevron = true,
+                    onClick = onSetupDecoyClick,
+                )
+            }
 
             // ── ABOUT ─────────────────────────────────────────────────────────
             SectionHeader("ABOUT", topPadding = 28.dp)
