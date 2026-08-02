@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
-import dev.favourdevlabs.cleanthes.domain.usecase.RotateVaultKey
+import dev.favourdevlabs.cleanthes.domain.usecase.RotateCitadelKey
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +34,7 @@ data class RotateKeyUiState(
 
 @HiltViewModel
 class RotateKeyViewModel @Inject constructor(
-    private val rotateVaultKey: RotateVaultKey,
+    private val rotateCitadelKey: RotateCitadelKey,
     private val enrolBiometric: EnrolBiometric,
     private val recordAuditEvent: RecordAuditEvent,
     private val sessionManager: SessionManager,
@@ -46,7 +46,7 @@ class RotateKeyViewModel @Inject constructor(
     private val _events = Channel<RotateKeyEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private var pendingNewVaultKey: SecretKey? = null
+    private var pendingNewCitadelKey: SecretKey? = null
 
     fun onRotationConfirmed(masterPassword: String) {
         val currentKey = sessionManager.getSessionKey() ?: run {
@@ -56,12 +56,12 @@ class RotateKeyViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val result = rotateVaultKey(masterPassword, currentKey)
-                sessionManager.setSessionKey(result.newVaultKey)
+                val result = rotateCitadelKey(masterPassword, currentKey)
+                sessionManager.setSessionKey(result.newCitadelKey)
                 recordAuditEvent(RecordAuditEvent.EventType.KEY_ROTATED)
 
                 if (result.biometricWasEnabled) {
-                    pendingNewVaultKey = result.newVaultKey
+                    pendingNewCitadelKey = result.newCitadelKey
                     val cipher = withContext(Dispatchers.IO) {
                         KeystoreManager.generateBiometricKey()
                         KeystoreManager.getEncryptCipher()
@@ -80,7 +80,7 @@ class RotateKeyViewModel @Inject constructor(
     }
 
     fun onBiometricEnrollmentSuccess(cipher: Cipher) {
-        val newKey = pendingNewVaultKey ?: return
+        val newKey = pendingNewCitadelKey ?: return
         viewModelScope.launch {
             try {
                 enrolBiometric(newKey, cipher)

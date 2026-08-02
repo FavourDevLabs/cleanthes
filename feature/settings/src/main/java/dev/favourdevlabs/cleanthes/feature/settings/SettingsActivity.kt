@@ -42,8 +42,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveVaultProfile
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveCitadelProfile
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
@@ -64,7 +64,7 @@ class SettingsActivity : AuthenticatedActivity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var autofillManager: AutofillManager
-    @Inject lateinit var getActiveVaultProfile: GetActiveVaultProfile
+    @Inject lateinit var getActiveCitadelProfile: GetActiveCitadelProfile
 
     // Compose-observable state — mutated by onResume
     private var autofillActive by mutableStateOf(false)
@@ -85,7 +85,7 @@ class SettingsActivity : AuthenticatedActivity() {
         autofillManager = getSystemService(AutofillManager::class.java)
 
         lifecycleScope.launch {
-            showDecoyOption = getActiveVaultProfile() == VaultProfile.REAL
+            showDecoyOption = getActiveCitadelProfile() == CitadelProfile.REAL
         }
 
         setContent {
@@ -199,26 +199,26 @@ private fun SettingsScreen(
             )
 
             SettingsRow(
-                title = "Export Vault",
+                title = "Export Citadel",
                 value = "",
                 showChevron = true,
                 onClick = onExportClick,
             )
             SettingsRow(
-                title = "Import Vault",
+                title = "Import Citadel",
                 value = "",
                 showChevron = true,
                 onClick = onImportClick,
             )
             SettingsRow(
-                title = "Rotate Vault Key",
+                title = "Rotate Citadel Key",
                 value = "",
                 showChevron = true,
                 onClick = onRotateKeyClick,
             )
             if (showDecoyOption) {
                 SettingsRow(
-                    title = "Set Up Decoy Vault",
+                    title = "Set Up Decoy Citadel",
                     value = "",
                     showChevron = true,
                     onClick = onSetupDecoyClick,

@@ -129,7 +129,7 @@ private fun SetupDecoyToolbar(onBack: () -> Unit) {
             }
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Set Up Decoy Vault",
+                text = "Set Up Decoy Citadel",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 0.05.em,

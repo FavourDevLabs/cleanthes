@@ -144,7 +144,7 @@ private fun RotateKeyScreen(
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = "This generates a fresh encryption key and re-seals every " +
-                        "entry in your vault under it. The old key becomes worthless " +
+                        "entry in your citadel under it. The old key becomes worthless " +
                         "the moment this finishes.",
                     fontSize = 15.sp,
                     color = TextSecondary,
@@ -222,7 +222,7 @@ private fun RotateKeyToolbar(onBack: () -> Unit) {
             }
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Rotate Vault Key",
+                text = "Rotate Citadel Key",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 0.05.em,

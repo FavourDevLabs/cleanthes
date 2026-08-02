@@ -3,9 +3,9 @@ package dev.favourdevlabs.cleanthes.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
-import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseCitadel
+import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,8 +38,8 @@ data class SetupDecoyUiState(
 
 @HiltViewModel
 class SetupDecoyViewModel @Inject constructor(
-    private val initialiseVault: InitialiseVault,
-    private val loadVaultCredentials: LoadVaultCredentials,
+    private val initialiseCitadel: InitialiseCitadel,
+    private val loadCitadelCredentials: LoadCitadelCredentials,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupDecoyUiState())
@@ -82,7 +82,7 @@ class SetupDecoyViewModel @Inject constructor(
 
     private suspend fun performCreateDecoy(password: String) {
         try {
-            val realCreds = loadVaultCredentials(VaultProfile.REAL)
+            val realCreds = loadCitadelCredentials(CitadelProfile.REAL)
             val realSalt = realCreds.authSalt
             val realHash = realCreds.masterHash
 
@@ -101,11 +101,11 @@ class SetupDecoyViewModel @Inject constructor(
                 }
             }
 
-            initialiseVault(password, VaultProfile.DECOY)
+            initialiseCitadel(password, CitadelProfile.DECOY)
             _uiState.update { it.copy(isLoading = false, completed = true) }
         } catch (_: Exception) {
             _uiState.update {
-                it.copy(isLoading = false, errorMessage = "The second vault could not be sealed. Try again.")
+                it.copy(isLoading = false, errorMessage = "The second citadel could not be sealed. Try again.")
             }
         }
     }
