@@ -3,9 +3,9 @@ package dev.favourdevlabs.cleanthes.feature.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -44,14 +44,14 @@ data class DetailUiState(
 class DetailViewModel
     @Inject
     constructor(
-        private val getVaultEntry: GetVaultEntry,
+        private val getCitadelEntry: GetCitadelEntry,
         private val sessionManager: SessionManager,
         private val recordAuditEvent: RecordAuditEvent,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DetailUiState())
         val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
-        private var currentItem: VaultItem? = null
+        private var currentItem: CitadelItem? = null
         private var totpJob: Job? = null
 
         fun loadEntry(entryId: Long) {
@@ -63,7 +63,7 @@ class DetailViewModel
                             _uiState.update { it.copy(shouldFinish = true) }
                             return@launch
                         }
-                    val item = getVaultEntry(entryId, key)
+                    val item = getCitadelEntry(entryId, key)
                     if (item == null) {
                         _uiState.update { it.copy(shouldFinish = true) }
                         return@launch
@@ -98,7 +98,7 @@ class DetailViewModel
 
         fun resumeTotpUpdater() = currentItem?.let { if (it.hasTOTP()) startTotpUpdater(it) }
 
-        private fun startTotpUpdater(item: VaultItem) {
+        private fun startTotpUpdater(item: CitadelItem) {
             stopTotpUpdater()
             totpJob =
                 viewModelScope.launch {
