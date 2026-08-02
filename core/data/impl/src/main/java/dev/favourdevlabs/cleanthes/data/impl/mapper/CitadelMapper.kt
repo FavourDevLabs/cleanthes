@@ -1,9 +1,9 @@
 package dev.favourdevlabs.cleanthes.data.impl.mapper
 
-import dev.favourdevlabs.cleanthes.data.impl.entities.VaultEntry
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntry
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 
-internal fun VaultEntry.toDomain(): VaultItem = VaultItem(
+internal fun CitadelEntry.toDomain(): CitadelItem = CitadelItem(
     id            = id,
     title         = title,
     username      = username,
@@ -21,7 +21,7 @@ internal fun VaultEntry.toDomain(): VaultItem = VaultItem(
     totpAlgorithm = totpAlgorithm,
 )
 
-internal fun VaultItem.toEntity(): VaultEntry = VaultEntry(
+internal fun CitadelItem.toEntity(): CitadelEntry = CitadelEntry(
     id                = id,
     title             = title,
     username          = username,
@@ -38,4 +38,3 @@ internal fun VaultItem.toEntity(): VaultEntry = VaultEntry(
     totpPeriod        = totpPeriod,
     totpAlgorithm     = totpAlgorithm,
 )
-

@@ -3,9 +3,9 @@ package dev.favourdevlabs.cleanthes.domain.model
 /**
  * Pure domain model — no Room annotations, no Android imports.
  * This is the entity the rest of the app reasons about.
- * VaultEntry in :core:data:impl maps to/from this.
+ * CitadelEntry in :core:data:impl maps to/from this.
  */
-data class VaultItem(
+data class CitadelItem(
     val id: Long = 0,
     val title: String = "",
     val username: String = "",
@@ -24,3 +24,4 @@ data class VaultItem(
 ) {
     fun hasTOTP(): Boolean = !totpSecret.isNullOrEmpty()
 }
+

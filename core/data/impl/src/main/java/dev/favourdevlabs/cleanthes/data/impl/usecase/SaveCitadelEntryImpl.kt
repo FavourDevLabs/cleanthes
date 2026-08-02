@@ -1,14 +1,14 @@
 package dev.favourdevlabs.cleanthes.data.impl.usecase
 
-import dev.favourdevlabs.cleanthes.data.api.VaultRepository
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
+import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
 import javax.inject.Inject
 
-class SaveVaultEntryImpl @Inject constructor(
-    private val repository: VaultRepository,
-) : SaveVaultEntry {
-    override suspend fun invoke(params: SaveVaultEntry.Params): Long = when (params) {
-        is SaveVaultEntry.Params.New -> repository.addEntry(
+class SaveCitadelEntryImpl @Inject constructor(
+    private val repository: CitadelRepository,
+) : SaveCitadelEntry {
+    override suspend fun invoke(params: SaveCitadelEntry.Params): Long = when (params) {
+        is SaveCitadelEntry.Params.New -> repository.addEntry(
             title           = params.title,
             userName        = params.username,
             plainPassword   = params.plainPassword,
@@ -23,11 +23,10 @@ class SaveVaultEntryImpl @Inject constructor(
             totpAlgorithm   = params.totpAlgorithm,
             key             = params.key,
         )
-        is SaveVaultEntry.Params.Edit -> repository.updateEntry(
+        is SaveCitadelEntry.Params.Edit -> repository.updateEntry(
             item          = params.item,
             plainPassword = params.plainPassword,
             key           = params.key,
         ).toLong()
     }
 }
-

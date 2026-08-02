@@ -5,13 +5,13 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "vault_entries",
+    tableName = "citadel_entries",
     indices = [
         Index(value = ["category"]),
         Index(value = ["isFavorite"])
     ]
 )
-data class VaultEntry(
+data class CitadelEntry(
 
     @PrimaryKey(autoGenerate = true)
     var id: Long = 0,
@@ -37,6 +37,5 @@ data class VaultEntry(
     fun hasTOTP(): Boolean = !totpSecret.isNullOrEmpty()
 
     override fun toString(): String =
-        "VaultEntry{id=$id, title='$title', hasTOTP=${hasTOTP()}}"
+        "CitadelEntry{id=$id, title='$title', hasTOTP=${hasTOTP()}}"
 }
-

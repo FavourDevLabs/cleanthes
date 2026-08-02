@@ -1,11 +1,11 @@
 package dev.favourdevlabs.cleanthes.data.impl.repository
 
-import dev.favourdevlabs.cleanthes.data.api.VaultRepository
-import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
-import dev.favourdevlabs.cleanthes.data.impl.entities.VaultEntry
+import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
+import dev.favourdevlabs.cleanthes.data.impl.db.CitadelDatabaseSwitchboard
+import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntry
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toDomain
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toEntity
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.security.CryptoManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,9 +14,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class VaultRepositoryImpl @Inject constructor(
-    private val switchboard: VaultDatabaseSwitchboard,
-) : VaultRepository {
+class CitadelRepositoryImpl @Inject constructor(
+    private val switchboard: CitadelDatabaseSwitchboard,
+) : CitadelRepository {
 
     override suspend fun addEntry(
         title: String,
@@ -38,7 +38,7 @@ class VaultRepositoryImpl @Inject constructor(
             CryptoManager.encrypt(plainTotpSecret, key) else null
 
         val now = System.currentTimeMillis()
-        val entry = VaultEntry(
+        val entry = CitadelEntry(
             title             = title,
             username          = userName,
             encryptedPassword = encPwd,
@@ -54,13 +54,13 @@ class VaultRepositoryImpl @Inject constructor(
             totpPeriod        = totpPeriod,
             totpAlgorithm     = totpAlgorithm ?: "SHA1",
         )
-        val id = switchboard.vaultDao().insert(entry)
+        val id = switchboard.citadelDao().insert(entry)
         if (id != -1L) entry.id = id
         id
     }
 
     override suspend fun updateEntry(
-        item: VaultItem,
+        item: CitadelItem,
         plainPassword: String,
         key: SecretKey,
     ): Int = withContext(Dispatchers.IO) {
@@ -70,54 +70,54 @@ class VaultRepositoryImpl @Inject constructor(
                 CryptoManager.encrypt(item.totpSecret!!, key) else null
             updatedAt = System.currentTimeMillis()
         }
-        switchboard.vaultDao().update(entity)
+        switchboard.citadelDao().update(entity)
     }
 
     override suspend fun deleteEntry(id: Long): Int =
-        withContext(Dispatchers.IO) { switchboard.vaultDao().deleteById(id) }
+        withContext(Dispatchers.IO) { switchboard.citadelDao().deleteById(id) }
 
-    override suspend fun wipeVault(): Int =
-        withContext(Dispatchers.IO) { switchboard.vaultDao().deleteAll() }
+    override suspend fun wipeCitadel(): Int =
+        withContext(Dispatchers.IO) { switchboard.citadelDao().deleteAll() }
 
-    override suspend fun getAllEntries(key: SecretKey): List<VaultItem> =
+    override suspend fun getAllEntries(key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().getAllEntries().map { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().getAllEntries().map { decrypt(it, key).toDomain() }
         }
 
-    override suspend fun getEntryById(id: Long, key: SecretKey): VaultItem? =
+    override suspend fun getEntryById(id: Long, key: SecretKey): CitadelItem? =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().getEntryById(id)?.let { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().getEntryById(id)?.let { decrypt(it, key).toDomain() }
         }
 
-    override suspend fun searchEntries(query: String, key: SecretKey): List<VaultItem> =
+    override suspend fun searchEntries(query: String, key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().searchEntries(query).map { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().searchEntries(query).map { decrypt(it, key).toDomain() }
         }
 
-    override suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<VaultItem> =
+    override suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
         }
 
-    override suspend fun getEntriesByCategory(category: String, key: SecretKey): List<VaultItem> =
+    override suspend fun getEntriesByCategory(category: String, key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().getEntriesByCategory(category).map { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().getEntriesByCategory(category).map { decrypt(it, key).toDomain() }
         }
 
-    override suspend fun getFavoriteEntries(key: SecretKey): List<VaultItem> =
+    override suspend fun getFavoriteEntries(key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
-            switchboard.vaultDao().getFavoriteEntries().map { decrypt(it, key).toDomain() }
+            switchboard.citadelDao().getFavoriteEntries().map { decrypt(it, key).toDomain() }
         }
 
     override suspend fun getAllCategories(): List<String> =
-        withContext(Dispatchers.IO) { switchboard.vaultDao().getAllCategories() }
+        withContext(Dispatchers.IO) { switchboard.citadelDao().getAllCategories() }
 
     override suspend fun getEntryCount(): Int =
-        withContext(Dispatchers.IO) { switchboard.vaultDao().getEntryCount() }
+        withContext(Dispatchers.IO) { switchboard.citadelDao().getEntryCount() }
 
     override suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey): Unit =
         withContext(Dispatchers.IO) {
-            val entries = switchboard.vaultDao().getAllEntries()
+            val entries = switchboard.citadelDao().getAllEntries()
             val reencrypted = entries.map { entry ->
                 val decryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, oldKey)
                 val decryptedTotp = if (!entry.totpSecret.isNullOrEmpty()) {
@@ -129,10 +129,10 @@ class VaultRepositoryImpl @Inject constructor(
                     totpSecret = decryptedTotp?.let { CryptoManager.encrypt(it, newKey) },
                 )
             }
-            switchboard.vaultDao().updateAll(reencrypted)
+            switchboard.citadelDao().updateAll(reencrypted)
         }
 
-    private fun decrypt(entry: VaultEntry, key: SecretKey): VaultEntry {
+    private fun decrypt(entry: CitadelEntry, key: SecretKey): CitadelEntry {
         entry.encryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, key)
         if (!entry.totpSecret.isNullOrEmpty()) {
             entry.totpSecret = CryptoManager.decrypt(entry.totpSecret!!, key)
@@ -140,4 +140,3 @@ class VaultRepositoryImpl @Inject constructor(
         return entry
     }
 }
-

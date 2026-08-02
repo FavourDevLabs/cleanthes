@@ -4,6 +4,5 @@ import javax.crypto.Cipher
 import javax.crypto.SecretKey
 
 interface EnrolBiometric {
-    suspend operator fun invoke(vaultKey: SecretKey, unlockedCipher: Cipher)
+    suspend operator fun invoke(citadelKey: SecretKey, unlockedCipher: Cipher)
 }
-

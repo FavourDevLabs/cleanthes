@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,19 +19,19 @@ import javax.inject.Singleton
  * never touches the other's file.
  */
 @Singleton
-class VaultDatabaseSwitchboard
+class CitadelDatabaseSwitchboard
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val filenameProvider: VaultFilenameProvider,
+        private val filenameProvider: CitadelFilenameProvider,
     ) {
-        private val instances = mutableMapOf<VaultProfile, CleanthesDatabase>()
+        private val instances = mutableMapOf<CitadelProfile, CleanthesDatabase>()
 
         @Volatile
-        private var activeProfile: VaultProfile? = null
+        private var activeProfile: CitadelProfile? = null
 
         @Synchronized
-        private fun getOrCreate(profile: VaultProfile): CleanthesDatabase =
+        private fun getOrCreate(profile: CitadelProfile): CleanthesDatabase =
             instances.getOrPut(profile) {
                 Room.databaseBuilder(
                     context.applicationContext,
@@ -48,7 +48,7 @@ class VaultDatabaseSwitchboard
             }
 
         /** Called once, right after password verification selects a profile. */
-        fun activate(profile: VaultProfile) {
+        fun activate(profile: CitadelProfile) {
             activeProfile = profile
         }
 
@@ -57,25 +57,24 @@ class VaultDatabaseSwitchboard
             activeProfile = null
         }
 
-        fun currentProfile(): VaultProfile? = activeProfile
+        fun currentProfile(): CitadelProfile? = activeProfile
 
-        fun vaultDao(): VaultDao =
-            getOrCreate(activeProfile ?: error("No vault profile active — session is locked"))
-                .vaultDao()
+        fun citadelDao(): CitadelDao =
+            getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
+                .citadelDao()
 
         fun auditLogDao(): AuditLogDao =
-            getOrCreate(activeProfile ?: error("No vault profile active — session is locked"))
+            getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
                 .auditLogDao()
 
         /**
          * Deletes a profile's database file entirely, closing the open
-         * connection first if any. Distinct from vaultDao().deleteAll() —
+         * connection first if any. Distinct from citadelDao().deleteAll() —
          * this removes the file from disk, not just its rows.
          */
         @Synchronized
-        fun destroy(profile: VaultProfile) {
+        fun destroy(profile: CitadelProfile) {
             instances.remove(profile)?.close()
             context.applicationContext.deleteDatabase(filenameProvider.dbFileName(profile))
         }
     }
-

@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.crypto.SecretKey
 
 /**
- * Owns the lifecycle of the in-memory vault decryption key for the current
+ * Owns the lifecycle of the in-memory citadel decryption key for the current
  * unlocked session. [lockState] is the single source of truth for whether
  * the app is currently locked — Activities and ViewModels should observe
  * it rather than polling.

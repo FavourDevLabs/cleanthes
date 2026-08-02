@@ -10,7 +10,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Manages the hardware-backed (Android Keystore) AES key used to wrap/unwrap
- * the vault key via biometric authentication.
+ * the citadel key via biometric authentication.
  *
  * This key never leaves the device's secure hardware (TEE/StrongBox) and is
  * configured to require a fresh biometric authentication before each use —
@@ -76,7 +76,7 @@ object KeystoreManager {
 
     /**
      * Builds a Cipher in ENCRYPT_MODE using the biometric key.
-     * Used once at setup time to wrap the vault key — does NOT require
+     * Used once at setup time to wrap the citadel key — does NOT require
      * biometric auth at this exact moment in our flow, since setup itself
      * already gated entry via the just-created master password screen.
      */

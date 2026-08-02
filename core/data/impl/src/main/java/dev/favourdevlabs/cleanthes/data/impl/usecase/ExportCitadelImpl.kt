@@ -1,9 +1,9 @@
 package dev.favourdevlabs.cleanthes.data.impl.usecase
 
 import android.util.Base64
-import dev.favourdevlabs.cleanthes.data.impl.export.VaultExportSerializer
-import dev.favourdevlabs.cleanthes.domain.usecase.ExportVault
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
+import dev.favourdevlabs.cleanthes.data.impl.export.CitadelExportSerializer
+import dev.favourdevlabs.cleanthes.domain.usecase.ExportCitadel
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntries
 import dev.favourdevlabs.cleanthes.security.CryptoManager
 import dev.favourdevlabs.cleanthes.security.KeyDerivation
 import kotlinx.coroutines.Dispatchers
@@ -12,18 +12,18 @@ import org.json.JSONObject
 import javax.crypto.SecretKey
 import javax.inject.Inject
 
-class ExportVaultImpl
+class ExportCitadelImpl
     @Inject
     constructor(
-        private val getVaultEntries: GetVaultEntries,
-    ) : ExportVault {
+        private val getCitadelEntries: GetCitadelEntries,
+    ) : ExportCitadel {
         override suspend fun invoke(
             exportPassword: String,
             key: SecretKey,
         ): String =
             withContext(Dispatchers.IO) {
-                val entries = getVaultEntries(key).entries
-                val plaintextJson = VaultExportSerializer.serialize(entries)
+                val entries = getCitadelEntries(key).entries
+                val plaintextJson = CitadelExportSerializer.serialize(entries)
 
                 val salt = KeyDerivation.generateSalt()
                 val exportKey = KeyDerivation.deriveKey(exportPassword.toCharArray(), salt)

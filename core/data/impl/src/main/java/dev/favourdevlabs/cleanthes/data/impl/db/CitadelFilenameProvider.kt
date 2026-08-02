@@ -5,7 +5,7 @@ import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.inject.Inject
@@ -17,7 +17,7 @@ private const val SALT_LENGTH_BYTES = 32
 
 /**
  * Derives DB and prefs filenames that reveal nothing about which
- * VaultProfile they belong to — no "_real"/"_decoy" suffix, no
+ * CitadelProfile they belong to — no real/decoy suffix, no
  * predictable naming. Both profiles' filenames are equally opaque, so
  * an inspector with raw filesystem access (not just app UI access)
  * cannot tell which of two files is the decoy, or that either is
@@ -28,18 +28,18 @@ private const val SALT_LENGTH_BYTES = 32
  * recognized across installs either.
  */
 @Singleton
-class VaultFilenameProvider
+class CitadelFilenameProvider
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
     ) {
         private val salt: ByteArray by lazy { loadOrCreateSalt() }
 
-        fun dbFileName(profile: VaultProfile): String = "cleanthes_${derive(profile, "db")}.db"
+        fun dbFileName(profile: CitadelProfile): String = "cleanthes_${derive(profile, "db")}.db"
 
-        fun prefsFileName(profile: VaultProfile): String = "cleanthes_${derive(profile, "prefs")}"
+        fun prefsFileName(profile: CitadelProfile): String = "cleanthes_${derive(profile, "prefs")}"
 
-        private fun derive(profile: VaultProfile, tag: String): String {
+        private fun derive(profile: CitadelProfile, tag: String): String {
             val digest = MessageDigest.getInstance("SHA-256")
             digest.update(salt)
             digest.update(profile.name.toByteArray(Charsets.UTF_8))

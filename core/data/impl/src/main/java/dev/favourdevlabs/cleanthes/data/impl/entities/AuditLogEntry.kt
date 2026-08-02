@@ -16,7 +16,7 @@ data class AuditLogEntry(
     var id: Long = 0,
     // UNLOCK_SUCCESS | UNLOCK_FAILURE | ENTRY_VIEWED | ENTRY_CREATED | ENTRY_EDITED | ENTRY_DELETED | EXPORT
     var eventType: String = "",
-    // Nullable — unlock/export events have no associated vault entry
+    // Nullable — unlock/export events have no associated citadel entry
     var entryId: Long? = null,
     // Denormalized snapshot — survives entry rename/deletion so the log stays readable
     var entryTitle: String? = null,

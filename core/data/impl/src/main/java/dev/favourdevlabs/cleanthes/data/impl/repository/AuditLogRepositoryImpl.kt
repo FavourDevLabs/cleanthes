@@ -1,7 +1,7 @@
 package dev.favourdevlabs.cleanthes.data.impl.repository
 
 import dev.favourdevlabs.cleanthes.data.api.AuditLogRepository
-import dev.favourdevlabs.cleanthes.data.impl.db.VaultDatabaseSwitchboard
+import dev.favourdevlabs.cleanthes.data.impl.db.CitadelDatabaseSwitchboard
 import dev.favourdevlabs.cleanthes.data.impl.entities.AuditLogEntry
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toDomain
 import dev.favourdevlabs.cleanthes.domain.model.AuditLogItem
@@ -17,7 +17,7 @@ private val RETENTION_MILLIS = TimeUnit.DAYS.toMillis(30)
 class AuditLogRepositoryImpl
     @Inject
     constructor(
-        private val switchboard: VaultDatabaseSwitchboard,
+        private val switchboard: CitadelDatabaseSwitchboard,
     ) : AuditLogRepository {
         override suspend fun recordEvent(
             eventType: String,

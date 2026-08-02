@@ -1,18 +1,18 @@
 package dev.favourdevlabs.cleanthes.data.impl.export
 
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Serializes/deserializes a list of VaultItem to/from a JSON string.
- * Used exclusively for vault export/import — the resulting JSON is
+ * Serializes/deserializes a list of CitadelItem to/from a JSON string.
+ * Used exclusively for citadel export/import — the resulting JSON is
  * always encrypted before it touches disk, never written in plaintext.
  */
-object VaultExportSerializer {
+object CitadelExportSerializer {
     private const val FORMAT_VERSION = 1
 
-    fun serialize(items: List<VaultItem>): String {
+    fun serialize(items: List<CitadelItem>): String {
         val array = JSONArray()
         items.forEach { item ->
             val obj =
@@ -40,12 +40,12 @@ object VaultExportSerializer {
         return root.toString()
     }
 
-    fun deserialize(json: String): List<VaultItem> {
+    fun deserialize(json: String): List<CitadelItem> {
         val root = JSONObject(json)
         val array = root.getJSONArray("entries")
         return (0 until array.length()).map { i ->
             val obj = array.getJSONObject(i)
-            VaultItem(
+            CitadelItem(
                 title = obj.getString("title"),
                 username = obj.getString("username"),
                 password = obj.getString("password"),

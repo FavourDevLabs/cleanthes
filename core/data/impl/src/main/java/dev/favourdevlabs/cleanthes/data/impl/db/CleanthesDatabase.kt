@@ -6,33 +6,33 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import android.content.Context
-import dev.favourdevlabs.cleanthes.data.impl.entities.VaultEntry
+import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntry
 import dev.favourdevlabs.cleanthes.data.impl.entities.AuditLogEntry
 
 @Database(
-    entities = [VaultEntry::class, AuditLogEntry::class],
+    entities = [CitadelEntry::class, AuditLogEntry::class],
     version = 4,
     exportSchema = true
 )
 abstract class CleanthesDatabase : RoomDatabase() {
 
-    abstract fun vaultDao(): VaultDao
+    abstract fun citadelDao(): CitadelDao
     abstract fun auditLogDao(): AuditLogDao
 
     companion object {
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpSecret TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpIssuer TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpDigits INTEGER NOT NULL DEFAULT 6")
-                db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpPeriod INTEGER NOT NULL DEFAULT 30")
+                db.execSQL("ALTER TABLE citadel_entries ADD COLUMN totpSecret TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE citadel_entries ADD COLUMN totpIssuer TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE citadel_entries ADD COLUMN totpDigits INTEGER NOT NULL DEFAULT 6")
+                db.execSQL("ALTER TABLE citadel_entries ADD COLUMN totpPeriod INTEGER NOT NULL DEFAULT 30")
             }
         }
 
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE vault_entries ADD COLUMN totpAlgorithm TEXT NOT NULL DEFAULT 'SHA1'")
+                db.execSQL("ALTER TABLE citadel_entries ADD COLUMN totpAlgorithm TEXT NOT NULL DEFAULT 'SHA1'")
             }
         }
 
@@ -53,4 +53,3 @@ abstract class CleanthesDatabase : RoomDatabase() {
 
     }
 }
-

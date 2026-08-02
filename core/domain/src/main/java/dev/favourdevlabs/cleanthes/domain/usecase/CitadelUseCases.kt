@@ -1,11 +1,11 @@
 package dev.favourdevlabs.cleanthes.domain.usecase
 
 import dev.favourdevlabs.cleanthes.domain.model.AuditLogItem
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import javax.crypto.SecretKey
 
-interface SaveVaultEntry {
+interface SaveCitadelEntry {
     sealed interface Params {
         data class New(
             val title: String,
@@ -24,7 +24,7 @@ interface SaveVaultEntry {
         ) : Params
 
         data class Edit(
-            val item: VaultItem,
+            val item: CitadelItem,
             val plainPassword: String,
             val key: SecretKey,
         ) : Params
@@ -33,36 +33,36 @@ interface SaveVaultEntry {
     suspend operator fun invoke(params: Params): Long
 }
 
-interface GetVaultEntry {
+interface GetCitadelEntry {
     suspend operator fun invoke(
         id: Long,
         key: SecretKey,
-    ): VaultItem?
+    ): CitadelItem?
 }
 
-interface GetVaultEntries {
+interface GetCitadelEntries {
     data class Result(
-        val entries: List<VaultItem>,
+        val entries: List<CitadelItem>,
         val categories: List<String>,
     )
 
     suspend operator fun invoke(key: SecretKey): Result
 }
 
-interface DeleteVaultEntry {
+interface DeleteCitadelEntry {
     suspend operator fun invoke(id: Long): Int
 }
 
-interface UnlockVault {
+interface UnlockCitadel {
     sealed interface Params {
         data class Password(
             val masterPassword: String,
             val encSalt: String,
-            val wrappedVaultKey: String,
+            val wrappedCitadelKey: String,
         ) : Params
 
         data class Biometric(
-            val vaultKey: SecretKey,
+            val citadelKey: SecretKey,
         ) : Params
     }
 
@@ -70,13 +70,13 @@ interface UnlockVault {
 }
 
 
-interface ActivateVaultProfile {
-    suspend operator fun invoke(profile: VaultProfile)
+interface ActivateCitadelProfile {
+    suspend operator fun invoke(profile: CitadelProfile)
 }
 
-interface GetActiveVaultProfile {
+interface GetActiveCitadelProfile {
     /** Returns the currently active profile, or null if the session is locked. */
-    suspend operator fun invoke(): VaultProfile?
+    suspend operator fun invoke(): CitadelProfile?
 }
 
 interface RecordAuditEvent {
@@ -102,14 +102,14 @@ interface GetAuditLog {
     suspend operator fun invoke(): List<AuditLogItem>
 }
 
-interface ExportVault {
+interface ExportCitadel {
     suspend operator fun invoke(
         exportPassword: String,
         key: SecretKey,
     ): String
 }
 
-interface ImportVault {
+interface ImportCitadel {
     data class Result(
         val imported: Int,
         val skipped: Int,
@@ -122,14 +122,14 @@ interface ImportVault {
     ): Result
 }
 
-interface RotateVaultKey {
+interface RotateCitadelKey {
     data class Result(
-        val newVaultKey: SecretKey,
+        val newCitadelKey: SecretKey,
         val biometricWasEnabled: Boolean,
     )
 
     suspend operator fun invoke(
         masterPassword: String,
-        currentVaultKey: SecretKey,
+        currentCitadelKey: SecretKey,
     ): Result
 }

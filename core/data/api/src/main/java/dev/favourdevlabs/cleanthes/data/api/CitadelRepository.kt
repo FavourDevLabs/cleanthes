@@ -1,9 +1,9 @@
 package dev.favourdevlabs.cleanthes.data.api
 
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import javax.crypto.SecretKey
 
-interface VaultRepository {
+interface CitadelRepository {
 
     suspend fun addEntry(
         title: String,
@@ -22,26 +22,26 @@ interface VaultRepository {
     ): Long
 
     suspend fun updateEntry(
-        item: VaultItem,
+        item: CitadelItem,
         plainPassword: String,
         key: SecretKey,
     ): Int
 
     suspend fun deleteEntry(id: Long): Int
 
-    suspend fun wipeVault(): Int
+    suspend fun wipeCitadel(): Int
 
-    suspend fun getAllEntries(key: SecretKey): List<VaultItem>
+    suspend fun getAllEntries(key: SecretKey): List<CitadelItem>
 
-    suspend fun getEntryById(id: Long, key: SecretKey): VaultItem?
+    suspend fun getEntryById(id: Long, key: SecretKey): CitadelItem?
 
-    suspend fun searchEntries(query: String, key: SecretKey): List<VaultItem>
+    suspend fun searchEntries(query: String, key: SecretKey): List<CitadelItem>
 
-    suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<VaultItem>
+    suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<CitadelItem>
 
-    suspend fun getEntriesByCategory(category: String, key: SecretKey): List<VaultItem>
+    suspend fun getEntriesByCategory(category: String, key: SecretKey): List<CitadelItem>
 
-    suspend fun getFavoriteEntries(key: SecretKey): List<VaultItem>
+    suspend fun getFavoriteEntries(key: SecretKey): List<CitadelItem>
 
     suspend fun getAllCategories(): List<String>
 
@@ -49,4 +49,3 @@ interface VaultRepository {
 
     suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey)
 }
-

@@ -58,11 +58,11 @@ object KeyDerivation {
         ByteArray(SALT_LENGTH_BYTES).also { SecureRandom().nextBytes(it) }
 
     /**
-     * Generates a random 256-bit AES key — used as the single vault data-encryption key.
+     * Generates a random 256-bit AES key — used as the single citadel data-encryption key.
      * This key never changes after setup; both password and biometric unlock paths
      * must independently arrive at this same key via wrapping/unwrapping.
      */
-    fun generateVaultKey(): SecretKey {
+    fun generateCitadelKey(): SecretKey {
         val keyBytes = ByteArray(32) // 256 bits
         SecureRandom().nextBytes(keyBytes)
         return SecretKeySpec(keyBytes, "AES")
@@ -70,7 +70,7 @@ object KeyDerivation {
 
     /**
      * Wraps (encrypts) a key's raw bytes using another key, via AES-GCM.
-     * Used to envelope-encrypt the vault key under a password-derived key
+     * Used to envelope-encrypt the citadel key under a password-derived key
      * or a Keystore-backed hardware key.
      */
     @Throws(Exception::class)

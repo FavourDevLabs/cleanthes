@@ -5,72 +5,72 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.favourdevlabs.cleanthes.data.api.AuditLogRepository
-import dev.favourdevlabs.cleanthes.data.api.VaultRepository
+import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.GetActiveVaultProfileImpl
-import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveVaultProfile
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.ActivateVaultProfileImpl
-import dev.favourdevlabs.cleanthes.domain.usecase.ActivateVaultProfile
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.GetActiveCitadelProfileImpl
+import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveCitadelProfile
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.ActivateCitadelProfileImpl
+import dev.favourdevlabs.cleanthes.domain.usecase.ActivateCitadelProfile
 import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
-import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
-import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
+import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseCitadel
+import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
 import dev.favourdevlabs.cleanthes.data.impl.repository.AuditLogRepositoryImpl
-import dev.favourdevlabs.cleanthes.data.impl.repository.VaultRepositoryImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.DeleteVaultEntryImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.ExportVaultImpl
+import dev.favourdevlabs.cleanthes.data.impl.repository.CitadelRepositoryImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.DeleteCitadelEntryImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.ExportCitadelImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.GetAuditLogImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.GetFaviconIconImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.GetVaultEntriesImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.GetVaultEntryImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.ImportVaultImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.GetCitadelEntriesImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.GetCitadelEntryImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.ImportCitadelImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.RecordAuditEventImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.SaveVaultEntryImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.UnlockVaultImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.EnrolBiometricImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.InitialiseVaultImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.LoadVaultCredentialsImpl
-import dev.favourdevlabs.cleanthes.data.impl.usecase.vault.RotateVaultKeyImpl
-import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
-import dev.favourdevlabs.cleanthes.domain.usecase.ExportVault
+import dev.favourdevlabs.cleanthes.data.impl.usecase.SaveCitadelEntryImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.UnlockCitadelImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.EnrolBiometricImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.InitialiseCitadelImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.LoadCitadelCredentialsImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.RotateCitadelKeyImpl
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.ExportCitadel
 import dev.favourdevlabs.cleanthes.domain.usecase.GetAuditLog
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
-import dev.favourdevlabs.cleanthes.domain.usecase.ImportVault
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntries
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.ImportCitadel
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
-import dev.favourdevlabs.cleanthes.domain.usecase.RotateVaultKey
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
-import dev.favourdevlabs.cleanthes.domain.usecase.UnlockVault
+import dev.favourdevlabs.cleanthes.domain.usecase.RotateCitadelKey
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.UnlockCitadel
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
     @Binds @Singleton
-    abstract fun bindVaultRepository(impl: VaultRepositoryImpl): VaultRepository
+    abstract fun bindCitadelRepository(impl: CitadelRepositoryImpl): CitadelRepository
 
     @Binds @Singleton
-    abstract fun bindGetVaultEntries(impl: GetVaultEntriesImpl): GetVaultEntries
+    abstract fun bindGetCitadelEntries(impl: GetCitadelEntriesImpl): GetCitadelEntries
 
     @Binds @Singleton
-    abstract fun bindGetVaultEntry(impl: GetVaultEntryImpl): GetVaultEntry
+    abstract fun bindGetCitadelEntry(impl: GetCitadelEntryImpl): GetCitadelEntry
 
     @Binds @Singleton
-    abstract fun bindSaveVaultEntry(impl: SaveVaultEntryImpl): SaveVaultEntry
+    abstract fun bindSaveCitadelEntry(impl: SaveCitadelEntryImpl): SaveCitadelEntry
 
     @Binds @Singleton
-    abstract fun bindDeleteVaultEntry(impl: DeleteVaultEntryImpl): DeleteVaultEntry
+    abstract fun bindDeleteCitadelEntry(impl: DeleteCitadelEntryImpl): DeleteCitadelEntry
 
     @Binds @Singleton
-    abstract fun bindUnlockVault(impl: UnlockVaultImpl): UnlockVault
+    abstract fun bindUnlockCitadel(impl: UnlockCitadelImpl): UnlockCitadel
 
     @Binds @Singleton
-    abstract fun bindInitialiseVault(impl: InitialiseVaultImpl): InitialiseVault
+    abstract fun bindInitialiseCitadel(impl: InitialiseCitadelImpl): InitialiseCitadel
 
     @Binds @Singleton
     abstract fun bindEnrolBiometric(impl: EnrolBiometricImpl): EnrolBiometric
 
     @Binds @Singleton
-    abstract fun bindLoadVaultCredentials(impl: LoadVaultCredentialsImpl): LoadVaultCredentials
+    abstract fun bindLoadCitadelCredentials(impl: LoadCitadelCredentialsImpl): LoadCitadelCredentials
 
     @Binds @Singleton
     abstract fun bindGetFaviconIcon(impl: GetFaviconIconImpl): GetFaviconIcon
@@ -85,17 +85,17 @@ abstract class DataModule {
     abstract fun bindGetAuditLog(impl: GetAuditLogImpl): GetAuditLog
 
     @Binds @Singleton
-    abstract fun bindExportVault(impl: ExportVaultImpl): ExportVault
+    abstract fun bindExportCitadel(impl: ExportCitadelImpl): ExportCitadel
 
     @Binds @Singleton
-    abstract fun bindImportVault(impl: ImportVaultImpl): ImportVault
+    abstract fun bindImportCitadel(impl: ImportCitadelImpl): ImportCitadel
 
     @Binds @Singleton
-    abstract fun bindRotateVaultKey(impl: RotateVaultKeyImpl): RotateVaultKey
+    abstract fun bindRotateCitadelKey(impl: RotateCitadelKeyImpl): RotateCitadelKey
 
     @Binds @Singleton
-    abstract fun bindActivateVaultProfile(impl: ActivateVaultProfileImpl): ActivateVaultProfile
+    abstract fun bindActivateCitadelProfile(impl: ActivateCitadelProfileImpl): ActivateCitadelProfile
 
     @Binds @Singleton
-    abstract fun bindGetActiveVaultProfile(impl: GetActiveVaultProfileImpl): GetActiveVaultProfile
+    abstract fun bindGetActiveCitadelProfile(impl: GetActiveCitadelProfileImpl): GetActiveCitadelProfile
 }

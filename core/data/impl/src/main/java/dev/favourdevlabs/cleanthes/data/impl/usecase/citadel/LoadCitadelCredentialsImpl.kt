@@ -1,30 +1,30 @@
-package dev.favourdevlabs.cleanthes.data.impl.usecase.vault
+package dev.favourdevlabs.cleanthes.data.impl.usecase.citadel
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
-import dev.favourdevlabs.cleanthes.data.impl.db.VaultFilenameProvider
+import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
+import dev.favourdevlabs.cleanthes.data.impl.db.CitadelFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_AUTH_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_ENABLED
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_BIOMETRIC_IV
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_ENC_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_MASTER_HASH
-import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_VAULT_EXISTS
-import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_BIOMETRIC
-import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_VAULT_KEY_PASSWORD
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_CITADEL_EXISTS
+import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_CITADEL_KEY_BIOMETRIC
+import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_CITADEL_KEY_PASSWORD
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class LoadVaultCredentialsImpl @Inject constructor(
+class LoadCitadelCredentialsImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val filenameProvider: VaultFilenameProvider,
-) : LoadVaultCredentials {
+    private val filenameProvider: CitadelFilenameProvider,
+) : LoadCitadelCredentials {
 
-    override suspend fun invoke(profile: VaultProfile): LoadVaultCredentials.Result =
+    override suspend fun invoke(profile: CitadelProfile): LoadCitadelCredentials.Result =
         withContext(Dispatchers.IO) {
             try {
                 val masterKey = MasterKey.Builder(context)
@@ -39,24 +39,24 @@ class LoadVaultCredentialsImpl @Inject constructor(
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
                 )
 
-                LoadVaultCredentials.Result(
-                    vaultExists              = prefs.getBoolean(KEY_VAULT_EXISTS, false),
+                LoadCitadelCredentials.Result(
+                    citadelExists            = prefs.getBoolean(KEY_CITADEL_EXISTS, false),
                     authSalt                 = prefs.getString(KEY_AUTH_SALT, null),
                     encSalt                  = prefs.getString(KEY_ENC_SALT, null),
                     masterHash               = prefs.getString(KEY_MASTER_HASH, null),
-                    wrappedVaultKeyPassword  = prefs.getString(KEY_WRAPPED_VAULT_KEY_PASSWORD, null),
-                    wrappedVaultKeyBiometric = prefs.getString(KEY_WRAPPED_VAULT_KEY_BIOMETRIC, null),
+                    wrappedCitadelKeyPassword  = prefs.getString(KEY_WRAPPED_CITADEL_KEY_PASSWORD, null),
+                    wrappedCitadelKeyBiometric = prefs.getString(KEY_WRAPPED_CITADEL_KEY_BIOMETRIC, null),
                     biometricIv              = prefs.getString(KEY_BIOMETRIC_IV, null),
                     biometricEnabled         = prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false),
                 )
             } catch (_: Exception) {
-                LoadVaultCredentials.Result(
-                    vaultExists              = false,
+                LoadCitadelCredentials.Result(
+                    citadelExists            = false,
                     authSalt                 = null,
                     encSalt                  = null,
                     masterHash               = null,
-                    wrappedVaultKeyPassword  = null,
-                    wrappedVaultKeyBiometric = null,
+                    wrappedCitadelKeyPassword  = null,
+                    wrappedCitadelKeyBiometric = null,
                     biometricIv              = null,
                     biometricEnabled         = false,
                 )
