@@ -135,7 +135,7 @@ class SetupActivity : SecureActivity() {
         }
 
         splashHandler.postDelayed(::onSplashComplete, 2000)
-        viewModel.checkVaultExists()
+        viewModel.checkCitadelExists()
     }
 
     override fun onDestroy() {

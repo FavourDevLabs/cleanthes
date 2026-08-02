@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.EnrolBiometric
-import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseVault
-import dev.favourdevlabs.cleanthes.data.api.usecase.LoadVaultCredentials
-import dev.favourdevlabs.cleanthes.domain.model.VaultProfile
+import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseCitadel
+import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
+import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import dev.favourdevlabs.cleanthes.security.KeystoreManager
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -83,9 +83,9 @@ private fun computeStrengthScore(password: String): Int {
 @HiltViewModel
 class SetupViewModel @Inject constructor(
     private val sessionManager: SessionManager,
-    private val initialiseVault: InitialiseVault,
+    private val initialiseCitadel: InitialiseCitadel,
     private val enrolBiometric: EnrolBiometric,
-    private val loadVaultCredentials: LoadVaultCredentials,
+    private val loadCitadelCredentials: LoadCitadelCredentials,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupUiState())
@@ -94,18 +94,18 @@ class SetupViewModel @Inject constructor(
     private val _navEvents = Channel<SetupNavEvent>(Channel.BUFFERED)
     val navEvents = _navEvents.receiveAsFlow()
 
-    private var pendingVaultKey: SecretKey? = null
+    private var pendingCitadelKey: SecretKey? = null
 
     // Held only for the duration of setup, to validate the decoy password
     // differs from the real one at the third gate. Cleared the moment the
     // flow finishes (decoy created or skipped) — never persisted.
     private var pendingMasterPassword: String? = null
 
-    fun checkVaultExists() {
+    fun checkCitadelExists() {
         viewModelScope.launch {
             try {
-                val result = loadVaultCredentials(VaultProfile.REAL)
-                if (result.vaultExists) {
+                val result = loadCitadelCredentials(CitadelProfile.REAL)
+                if (result.citadelExists) {
                     _navEvents.send(SetupNavEvent.NavigateToLogin)
                 }
             } catch (_: Exception) {}
@@ -152,8 +152,8 @@ class SetupViewModel @Inject constructor(
 
     private suspend fun performSetup(masterPassword: String) {
         try {
-            val result = initialiseVault(masterPassword, VaultProfile.REAL)
-            pendingVaultKey = result.vaultKey
+            val result = initialiseCitadel(masterPassword, CitadelProfile.REAL)
+            pendingCitadelKey = result.citadelKey
             pendingMasterPassword = masterPassword
             _uiState.update { it.copy(isLoading = false, showSecondGate = true) }
         } catch (e: Exception) {
@@ -165,7 +165,7 @@ class SetupViewModel @Inject constructor(
     }
 
     fun enableBiometricEnrollment() {
-        pendingVaultKey ?: return
+        pendingCitadelKey ?: return
         _uiState.update { it.copy(isEnrollingBiometric = true) }
         viewModelScope.launch {
             try {
@@ -184,13 +184,13 @@ class SetupViewModel @Inject constructor(
     }
 
     fun onBiometricEnrollmentSuccess(unlockedCipher: Cipher) {
-        val vaultKey = pendingVaultKey ?: run {
+        val citadelKey = pendingCitadelKey ?: run {
             _uiState.update { it.copy(isEnrollingBiometric = false) }
             return
         }
         viewModelScope.launch {
             try {
-                enrolBiometric(vaultKey, unlockedCipher)
+                enrolBiometric(citadelKey, unlockedCipher)
                 _uiState.update {
                     it.copy(isEnrollingBiometric = false, showSecondGate = false, showThirdGate = true)
                 }
@@ -213,7 +213,7 @@ class SetupViewModel @Inject constructor(
         _uiState.update { it.copy(showSecondGate = false, showThirdGate = true) }
     }
 
-    // ── Third gate: decoy vault ─────────────────────────────────────────────
+    // ── Third gate: decoy citadel ────────────────────────────────────────────
 
     fun onDecoyPasswordChange(value: String) =
         _uiState.update { it.copy(decoyPassword = value, decoyErrorMessage = null) }
@@ -255,12 +255,12 @@ class SetupViewModel @Inject constructor(
 
     private suspend fun performDecoyCreation(decoyPassword: String) {
         try {
-            initialiseVault(decoyPassword, VaultProfile.DECOY)
+            initialiseCitadel(decoyPassword, CitadelProfile.DECOY)
             finishSetup()
         } catch (e: Exception) {
             android.util.Log.e("CLEANTHES_SETUP", "Decoy creation failed", e)
             _uiState.update {
-                it.copy(isCreatingDecoy = false, decoyErrorMessage = "The second vault could not be sealed. Try again.")
+                it.copy(isCreatingDecoy = false, decoyErrorMessage = "The second citadel could not be sealed. Try again.")
             }
         }
     }
@@ -270,10 +270,10 @@ class SetupViewModel @Inject constructor(
     }
 
     private suspend fun finishSetup() {
-        val vaultKey = pendingVaultKey
-        pendingVaultKey = null
+        val citadelKey = pendingCitadelKey
+        pendingCitadelKey = null
         pendingMasterPassword = null
-        if (vaultKey != null) sessionManager.setSessionKey(vaultKey)
+        if (citadelKey != null) sessionManager.setSessionKey(citadelKey)
         _navEvents.send(SetupNavEvent.NavigateToHome)
     }
 }
