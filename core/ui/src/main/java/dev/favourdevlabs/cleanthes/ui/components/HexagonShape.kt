@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.min
 
 /**
- * A flat-top hexagon clip shape — used for the vault-entry avatar/icon, evoking a
+ * A flat-top hexagon clip shape — used for the citadel-entry avatar/icon, evoking a
  * seal or medallion rather than a soft consumer-app circle, matching Cleanthes'
  * Stoic, disciplined visual identity.
  */

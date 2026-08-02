@@ -8,10 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 /**
  * Base Activity that unconditionally prevents screenshots, screen recording,
  * and recent-apps thumbnail capture. Not user-configurable — Cleanthes is
- * zero-knowledge; vault-adjacent screens never render into a compositor
+ * zero-knowledge; citadel-adjacent screens never render into a compositor
  * buffer the OS can persist or expose.
  *
- * All Activities that touch vault contents, credentials, or the master
+ * All Activities that touch citadel contents, credentials, or the master
  * password must extend this (directly or via AuthenticatedActivity).
  */
 abstract class SecureActivity : AppCompatActivity() {

@@ -30,7 +30,7 @@ abstract class AuthenticatedActivity : SecureActivity() {
 
     /**
      * Called once, right before a lock-triggered redirect fires. Subclasses
-     * that hold unsaved, sensitive user input (e.g. an in-progress vault
+     * that hold unsaved, sensitive user input (e.g. an in-progress citadel
      * entry) can override this to snapshot that state so it survives the
      * Activity's impending finish().
      */
