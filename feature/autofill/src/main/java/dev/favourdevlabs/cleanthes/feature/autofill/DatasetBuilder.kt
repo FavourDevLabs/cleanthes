@@ -7,14 +7,14 @@ import android.service.autofill.Presentations
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 
 object DatasetBuilder {
     fun build(
         context: Context,
         usernameId: AutofillId,
         passwordId: AutofillId,
-        entry: VaultItem,
+        entry: CitadelItem,
     ): Dataset {
         val view =
             RemoteViews(context.packageName, R.layout.autofill_item).apply {

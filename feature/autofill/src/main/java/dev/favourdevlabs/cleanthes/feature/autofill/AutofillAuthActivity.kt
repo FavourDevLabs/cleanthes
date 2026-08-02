@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
-import dev.favourdevlabs.cleanthes.data.api.VaultRepository
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
+import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.ui.base.SecureActivity
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
@@ -32,7 +32,7 @@ import javax.inject.Inject
 class AutofillAuthActivity : SecureActivity() {
     @Inject lateinit var sessionManager: SessionManager
 
-    @Inject lateinit var repository: VaultRepository
+    @Inject lateinit var repository: CitadelRepository
 
     companion object {
         private const val TAG = "AutofillAuthActivity"
@@ -164,9 +164,9 @@ class AutofillAuthActivity : SecureActivity() {
         }
 
     private fun filter(
-        entries: List<VaultItem>,
+        entries: List<CitadelItem>,
         key: String?,
-    ): List<VaultItem> {
+    ): List<CitadelItem> {
         if (key.isNullOrEmpty()) return emptyList()
         val targetHost = registrableDomain(key) ?: key.lowercase()
         return entries.filter { e ->

@@ -17,7 +17,7 @@ import android.util.Log
 import android.view.autofill.AutofillId
 import android.widget.RemoteViews
 import dagger.hilt.android.AndroidEntryPoint
-import dev.favourdevlabs.cleanthes.data.api.VaultRepository
+import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +31,7 @@ import javax.inject.Inject
 class CleanthesAutofillService : AutofillService() {
     @Inject lateinit var sessionManager: SessionManager
 
-    @Inject lateinit var repository: VaultRepository
+    @Inject lateinit var repository: CitadelRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
