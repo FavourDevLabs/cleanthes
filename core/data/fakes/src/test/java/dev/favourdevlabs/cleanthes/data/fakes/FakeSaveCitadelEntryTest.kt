@@ -1,6 +1,6 @@
 package dev.favourdevlabs.cleanthes.data.fakes
 
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -8,19 +8,19 @@ import org.junit.Before
 import org.junit.Test
 import javax.crypto.KeyGenerator
 
-class FakeSaveVaultEntryTest {
+class FakeSaveCitadelEntryTest {
 
-    private lateinit var fake: FakeSaveVaultEntry
+    private lateinit var fake: FakeSaveCitadelEntry
     private val testKey = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
 
     @Before
     fun setUp() {
-        fake = FakeSaveVaultEntry()
+        fake = FakeSaveCitadelEntry()
     }
 
     @Test
     fun `invoke with New params records call and returns id`() = runTest {
-        val params = SaveVaultEntry.Params.New(
+        val params = SaveCitadelEntry.Params.New(
             title         = "GitHub",
             username      = "pepe",
             plainPassword = "secret123!",
@@ -46,7 +46,7 @@ class FakeSaveVaultEntryTest {
     @Test
     fun `invoke throws when shouldThrow is true`() = runTest {
         fake.shouldThrow = true
-        val params = SaveVaultEntry.Params.New(
+        val params = SaveCitadelEntry.Params.New(
             title = "X", username = "y", plainPassword = "z!1A",
             website = null, category = "General", notes = null,
             isFavorite = false, totpSecret = null, totpIssuer = null,
@@ -61,7 +61,7 @@ class FakeSaveVaultEntryTest {
 
     @Test
     fun `reset clears recorded calls`() = runTest {
-        val params = SaveVaultEntry.Params.New(
+        val params = SaveCitadelEntry.Params.New(
             title = "X", username = "y", plainPassword = "z!1A",
             website = null, category = "General", notes = null,
             isFavorite = false, totpSecret = null, totpIssuer = null,

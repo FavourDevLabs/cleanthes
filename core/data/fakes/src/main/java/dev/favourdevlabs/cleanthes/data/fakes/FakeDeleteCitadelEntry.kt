@@ -1,14 +1,14 @@
 package dev.favourdevlabs.cleanthes.data.fakes
 
-import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
 
-class FakeDeleteVaultEntry : DeleteVaultEntry {
+class FakeDeleteCitadelEntry : DeleteCitadelEntry {
 
     val deletedIds = mutableListOf<Long>()
     var shouldThrow: Boolean = false
 
     override suspend fun invoke(id: Long): Int {
-        if (shouldThrow) throw RuntimeException("FakeDeleteVaultEntry error")
+        if (shouldThrow) throw RuntimeException("FakeDeleteCitadelEntry error")
         deletedIds.add(id)
         return 1
     }
