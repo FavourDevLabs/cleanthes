@@ -1,5 +1,4 @@
 package dev.favourdevlabs.cleanthes.data.fakes
-
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -7,11 +6,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.crypto.SecretKey
 
 class FakeSessionManager : SessionManager {
-
     private val _lockState = MutableStateFlow(true)
     override val lockState: StateFlow<Boolean> = _lockState.asStateFlow()
-
     private var key: SecretKey? = null
+
+    var backgroundedCallCount = 0
+        private set
+    var foregroundedCallCount = 0
+        private set
 
     override fun setSessionKey(key: SecretKey) {
         this.key = key
@@ -26,6 +28,14 @@ class FakeSessionManager : SessionManager {
     }
 
     override fun refreshSession() = Unit
+
+    override fun notifyAppBackgrounded() {
+        backgroundedCallCount++
+    }
+
+    override fun notifyAppForegrounded() {
+        foregroundedCallCount++
+    }
 
     override fun getLastActiveTimestamp(): Long = 0L
 
