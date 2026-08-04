@@ -224,7 +224,7 @@ private fun ImportToolbar(onBack: () -> Unit) {
             }
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Import Vault",
+                text = "Import Citadel",
                 style =
                     MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,
@@ -281,7 +281,7 @@ private fun ImportPasswordDialog(
 
 @Composable
 private fun ImportResultView(
-    result: dev.favourdevlabs.cleanthes.domain.usecase.ImportVault.Result,
+    result: dev.favourdevlabs.cleanthes.domain.usecase.ImportCitadel.Result,
     onDone: () -> Unit,
 ) {
     Column(

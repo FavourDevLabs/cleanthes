@@ -6,7 +6,7 @@
     The circular background for the category initial icon
     on each vault entry row in the RecyclerView.
 
-    The fill color is set programmatically in VaultEntryAdapter
+    The fill color is set programmatically in CitadelEntryAdapter
     via setBackgroundTintList() — so the color defined here
     is just the default fallback. What matters is the oval shape.
 

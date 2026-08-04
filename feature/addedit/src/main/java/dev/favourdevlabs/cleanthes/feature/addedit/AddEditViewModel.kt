@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.common.PasswordGenerator
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.domain.otp.OtpAuthParser
 import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
-import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,9 +50,9 @@ data class AddEditUiState(
 class AddEditViewModel
     @Inject
     constructor(
-        private val getVaultEntry: GetVaultEntry,
-        private val saveVaultEntry: SaveVaultEntry,
-        private val deleteVaultEntry: DeleteVaultEntry,
+        private val getCitadelEntry: GetCitadelEntry,
+        private val saveCitadelEntry: SaveCitadelEntry,
+        private val deleteCitadelEntry: DeleteCitadelEntry,
         private val sessionManager: SessionManager,
         private val recordAuditEvent: RecordAuditEvent,
     ) : ViewModel() {
@@ -62,7 +62,7 @@ class AddEditViewModel
         private val _events = Channel<AddEditEvent>(Channel.BUFFERED)
         val events = _events.receiveAsFlow()
 
-        private var existingEntry: VaultItem? = null
+        private var existingEntry: CitadelItem? = null
         private var initialized = false
 
         fun initForEntry(entryId: Long) {
@@ -78,7 +78,7 @@ class AddEditViewModel
                             _events.send(AddEditEvent.NavigateBack)
                             return@launch
                         }
-                    val item = getVaultEntry(entryId, key)
+                    val item = getCitadelEntry(entryId, key)
                     if (item == null) {
                         _events.send(AddEditEvent.NavigateBack)
                         return@launch
@@ -213,7 +213,7 @@ class AddEditViewModel
             viewModelScope.launch {
                 try {
                     if (s.isEditMode && existingEntry != null) {
-                        // VaultItem is immutable — use copy() instead of mutation
+                        // CitadelItem is immutable — use copy() instead of mutation
                         val updated =
                             existingEntry!!.copy(
                                 title = title,
@@ -228,13 +228,13 @@ class AddEditViewModel
                                 totpDigits = s.totpDigits,
                                 totpPeriod = s.totpPeriod,
                             )
-                        saveVaultEntry(SaveVaultEntry.Params.Edit(updated, password, key))
+                        saveCitadelEntry(SaveCitadelEntry.Params.Edit(updated, password, key))
                         recordAuditEvent(RecordAuditEvent.EventType.ENTRY_EDITED, updated.id, updated.title)
                         existingEntry = updated // update in-memory ref only after confirmed success
                     } else {
                         val newId =
-                            saveVaultEntry(
-                                SaveVaultEntry.Params.New(
+                            saveCitadelEntry(
+                                SaveCitadelEntry.Params.New(
                                     title = title,
                                     username = username,
                                     plainPassword = password,
@@ -263,7 +263,7 @@ class AddEditViewModel
             val entry = existingEntry ?: return
             viewModelScope.launch {
                 try {
-                    deleteVaultEntry(entry.id)
+                    deleteCitadelEntry(entry.id)
                     recordAuditEvent(RecordAuditEvent.EventType.ENTRY_DELETED, entry.id, entry.title)
                     _events.send(AddEditEvent.NavigateBack)
                 } catch (_: Exception) {

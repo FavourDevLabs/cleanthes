@@ -242,7 +242,7 @@ private fun ExportToolbar(onBack: () -> Unit) {
             }
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Export Vault",
+                text = "Export Citadel",
                 style =
                     MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,

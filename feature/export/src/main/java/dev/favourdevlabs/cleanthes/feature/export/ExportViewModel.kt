@@ -3,7 +3,7 @@ package dev.favourdevlabs.cleanthes.feature.export
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.favourdevlabs.cleanthes.domain.usecase.ExportVault
+import dev.favourdevlabs.cleanthes.domain.usecase.ExportCitadel
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.channels.Channel
@@ -31,7 +31,7 @@ data class ExportUiState(
 class ExportViewModel
     @Inject
     constructor(
-        private val exportVault: ExportVault,
+        private val exportCitadel: ExportCitadel,
         private val recordAuditEvent: RecordAuditEvent,
         private val sessionManager: SessionManager,
     ) : ViewModel() {
@@ -50,7 +50,7 @@ class ExportViewModel
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             viewModelScope.launch {
                 try {
-                    val blob = exportVault(exportPassword, key)
+                    val blob = exportCitadel(exportPassword, key)
                     _uiState.update { it.copy(isLoading = false) }
                     _events.send(ExportEvent.LaunchSaveFile(blob))
                 } catch (_: Exception) {

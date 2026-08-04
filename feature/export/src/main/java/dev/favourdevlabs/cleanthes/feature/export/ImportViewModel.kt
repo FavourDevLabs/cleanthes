@@ -3,7 +3,7 @@ package dev.favourdevlabs.cleanthes.feature.export
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.favourdevlabs.cleanthes.domain.usecase.ImportVault
+import dev.favourdevlabs.cleanthes.domain.usecase.ImportCitadel
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,14 +15,14 @@ import javax.inject.Inject
 data class ImportUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val result: ImportVault.Result? = null,
+    val result: ImportCitadel.Result? = null,
 )
 
 @HiltViewModel
 class ImportViewModel
     @Inject
     constructor(
-        private val importVault: ImportVault,
+        private val importCitadel: ImportCitadel,
         private val sessionManager: SessionManager,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ImportUiState())
@@ -40,7 +40,7 @@ class ImportViewModel
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             viewModelScope.launch {
                 try {
-                    val result = importVault(encryptedBlob, exportPassword, key)
+                    val result = importCitadel(encryptedBlob, exportPassword, key)
                     _uiState.update { it.copy(isLoading = false, result = result) }
                 } catch (_: Exception) {
                     _uiState.update {

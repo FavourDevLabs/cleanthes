@@ -219,13 +219,13 @@ private fun iconFor(eventType: String): Pair<ImageVector, Color> =
 
 private fun labelFor(entry: AuditLogItem): String =
     when (entry.eventType) {
-        "UNLOCK_SUCCESS" -> "Vault unlocked"
+        "UNLOCK_SUCCESS" -> "Citadel unlocked"
         "UNLOCK_FAILURE" -> "Failed unlock attempt"
         "ENTRY_VIEWED" -> "Viewed \u201C${entry.entryTitle ?: "entry"}\u201D"
         "ENTRY_CREATED" -> "Created \u201C${entry.entryTitle ?: "entry"}\u201D"
         "ENTRY_EDITED" -> "Edited \u201C${entry.entryTitle ?: "entry"}\u201D"
         "ENTRY_DELETED" -> "Deleted \u201C${entry.entryTitle ?: "entry"}\u201D"
-        "EXPORT" -> "Vault exported"
+        "EXPORT" -> "Citadel exported"
         else -> entry.eventType
     }
 

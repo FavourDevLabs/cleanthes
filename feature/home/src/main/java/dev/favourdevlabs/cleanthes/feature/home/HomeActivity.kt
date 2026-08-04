@@ -88,7 +88,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.common.ClipboardHelper
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
 import dev.favourdevlabs.cleanthes.ui.components.HexagonShape
 import dev.favourdevlabs.cleanthes.ui.components.cleanthesOutlinedTextFieldColors
@@ -175,7 +175,7 @@ class HomeActivity : AuthenticatedActivity() {
 @Composable
 private fun HomeScreen(
     viewModel: HomeViewModel,
-    onEntryClick: (VaultItem) -> Unit,
+    onEntryClick: (CitadelItem) -> Unit,
     onCopyPassword: (String) -> Unit,
     onAddNew: () -> Unit,
     onSettings: () -> Unit,
@@ -470,9 +470,9 @@ private fun SwipeDeleteBackground(state: SwipeToDismissBoxState) {
 
 @Composable
 private fun EntryCard(
-    entry: VaultItem,
+    entry: CitadelItem,
     icon: ImageBitmap?,
-    onEntryClick: (VaultItem) -> Unit,
+    onEntryClick: (CitadelItem) -> Unit,
     onCopyClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -621,8 +621,8 @@ private fun EmptyState(
     }
 }
 
-// Category avatar color — mirrors VaultEntryViewHolder.categoryColor()
-private fun avatarColor(entry: VaultItem): Color {
+// Category avatar color — mirrors CitadelEntryViewHolder.categoryColor()
+private fun avatarColor(entry: CitadelItem): Color {
     if (entry.isFavorite) return GoldBright
     val palette =
         listOf(

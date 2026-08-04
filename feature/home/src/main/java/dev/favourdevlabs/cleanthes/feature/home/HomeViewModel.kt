@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
-import dev.favourdevlabs.cleanthes.domain.model.VaultItem
-import dev.favourdevlabs.cleanthes.domain.usecase.DeleteVaultEntry
-import dev.favourdevlabs.cleanthes.domain.usecase.GetVaultEntries
+import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
+import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntries
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
-import dev.favourdevlabs.cleanthes.domain.usecase.SaveVaultEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
 import dev.favourdevlabs.cleanthes.ui.components.decodeFaviconBitmap
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +23,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val isLoading: Boolean = false,
-    val entries: List<VaultItem> = emptyList(),
+    val entries: List<CitadelItem> = emptyList(),
     val categories: List<String> = emptyList(),
     val entryCount: Int = 0,
     val searchQuery: String = "",
@@ -32,7 +32,7 @@ data class HomeUiState(
     val errorMessage: String? = null,
     val icons: Map<Long, ImageBitmap> = emptyMap(),
 ) {
-    val filteredEntries: List<VaultItem>
+    val filteredEntries: List<CitadelItem>
         get() =
             entries
                 .filter { it.id !in pendingDeleteIds }
@@ -53,10 +53,10 @@ data class HomeUiState(
 class HomeViewModel
     @Inject
     constructor(
-        private val getVaultEntries: GetVaultEntries,
-        private val deleteVaultEntry: DeleteVaultEntry,
+        private val getCitadelEntries: GetCitadelEntries,
+        private val deleteCitadelEntry: DeleteCitadelEntry,
         private val recordAuditEvent: RecordAuditEvent,
-        private val saveVaultEntry: SaveVaultEntry,
+        private val saveCitadelEntry: SaveCitadelEntry,
         private val sessionManager: SessionManager,
         private val getFaviconIcon: GetFaviconIcon,
     ) : ViewModel() {
@@ -72,7 +72,7 @@ class HomeViewModel
             _uiState.update { it.copy(isLoading = true) }
             viewModelScope.launch {
                 try {
-                    val result = getVaultEntries(key)
+                    val result = getCitadelEntries(key)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -95,7 +95,7 @@ class HomeViewModel
          * coroutine per entry, updating [HomeUiState.icons] incrementally as each arrives —
          * rather than waiting for every icon before showing any of them.
          */
-        private fun loadIconsFor(entries: List<VaultItem>) {
+        private fun loadIconsFor(entries: List<CitadelItem>) {
             entries.forEach { entry ->
                 val website = entry.website
                 android.util.Log.d("FaviconDebug", "entry '${entry.title}' has website='$website'")
@@ -132,7 +132,7 @@ class HomeViewModel
             _uiState.update { it.copy(pendingDeleteIds = it.pendingDeleteIds - entryId) }
             viewModelScope.launch {
                 try {
-                    deleteVaultEntry(entryId)
+                    deleteCitadelEntry(entryId)
                     recordAuditEvent(RecordAuditEvent.EventType.ENTRY_DELETED, entryId, entryTitle)
                     loadEntries()
                 } catch (_: Exception) {
@@ -144,14 +144,14 @@ class HomeViewModel
         fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
         fun toggleFavorite(
-            item: VaultItem,
+            item: CitadelItem,
             plainPassword: String,
         ) {
             val key = sessionManager.getSessionKey() ?: return
             viewModelScope.launch {
                 try {
-                    saveVaultEntry(
-                        SaveVaultEntry.Params.Edit(
+                    saveCitadelEntry(
+                        SaveCitadelEntry.Params.Edit(
                             item = item.copy(isFavorite = !item.isFavorite),
                             plainPassword = plainPassword,
                             key = key,
