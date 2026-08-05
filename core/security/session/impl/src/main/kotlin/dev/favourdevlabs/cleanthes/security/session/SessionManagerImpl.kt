@@ -1,9 +1,8 @@
 package dev.favourdevlabs.cleanthes.security.session
 
+import dev.favourdevlabs.cleanthes.security.session.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,13 +15,13 @@ import javax.inject.Singleton
 @Singleton
 class SessionManagerImpl
     @Inject
-    constructor() : SessionManager {
+    constructor(
+        @ApplicationScope private val scope: CoroutineScope,
+    ) : SessionManager {
         companion object {
             private const val BACKGROUND_GRACE_MS = 30 * 1000L
             private const val INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000L
         }
-
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         @Volatile private var sessionKey: SecretKey? = null
         @Volatile private var sessionStartTime: Long = 0L
