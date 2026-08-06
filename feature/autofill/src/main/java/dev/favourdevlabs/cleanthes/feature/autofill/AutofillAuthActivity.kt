@@ -91,14 +91,6 @@ class AutofillAuthActivity : SecureActivity() {
     }
 
     private fun deliver() {
-        val secretKey =
-            sessionManager.getSessionKey()
-                ?: run {
-                    Log.w(TAG, "deliver: no session key, session locked or expired")
-                    setResult(RESULT_CANCELED)
-                    finish()
-                    return
-                }
         val usernameId = getParcelableExtraCompat<AutofillId>(EXTRA_USERNAME_ID)
         val passwordId = getParcelableExtraCompat<AutofillId>(EXTRA_PASSWORD_ID)
         val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME)
@@ -118,9 +110,19 @@ class AutofillAuthActivity : SecureActivity() {
                     if (lookupKey.isNullOrEmpty()) {
                         emptyList()
                     } else {
-                        withContext(Dispatchers.IO) {
-                            filter(repository.getEntriesByDomainCandidate(lookupKey, secretKey), lookupKey)
+                        val result =
+                            sessionManager.withSessionKey { secretKey ->
+                                withContext(Dispatchers.IO) {
+                                    filter(repository.getEntriesByDomainCandidate(lookupKey, secretKey), lookupKey)
+                                }
+                            }
+                        if (result == null) {
+                            Log.w(TAG, "deliver: no session key, session locked or expired")
+                            setResult(RESULT_CANCELED)
+                            finish()
+                            return@launch
                         }
+                        result
                     }
                 if (matches.isEmpty()) {
                     Log.d(TAG, "deliver: no matching entries for $lookupKey")
@@ -190,4 +192,3 @@ class AutofillAuthActivity : SecureActivity() {
         return if (parts.size >= 2) parts.takeLast(2).joinToString(".") else lower
     }
 }
-

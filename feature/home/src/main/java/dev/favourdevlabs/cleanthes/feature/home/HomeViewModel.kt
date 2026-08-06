@@ -64,15 +64,16 @@ class HomeViewModel
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
         fun loadEntries() {
-            val key =
-                sessionManager.getSessionKey() ?: run {
-                    _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
-                    return
-                }
             _uiState.update { it.copy(isLoading = true) }
             viewModelScope.launch {
                 try {
-                    val result = getCitadelEntries(key)
+                    val result = sessionManager.withSessionKey { key -> getCitadelEntries(key) }
+                    if (result == null) {
+                        _uiState.update {
+                            it.copy(isLoading = false, errorMessage = "Session expired. Please unlock again.")
+                        }
+                        return@launch
+                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -147,16 +148,19 @@ class HomeViewModel
             item: CitadelItem,
             plainPassword: String,
         ) {
-            val key = sessionManager.getSessionKey() ?: return
             viewModelScope.launch {
                 try {
-                    saveCitadelEntry(
-                        SaveCitadelEntry.Params.Edit(
-                            item = item.copy(isFavorite = !item.isFavorite),
-                            plainPassword = plainPassword,
-                            key = key,
-                        ),
-                    )
+                    val saved =
+                        sessionManager.withSessionKey { key ->
+                            saveCitadelEntry(
+                                SaveCitadelEntry.Params.Edit(
+                                    item = item.copy(isFavorite = !item.isFavorite),
+                                    plainPassword = plainPassword,
+                                    key = key,
+                                ),
+                            )
+                        }
+                    if (saved == null) return@launch
                     loadEntries()
                 } catch (_: Exception) {
                     _uiState.update { it.copy(errorMessage = "Failed to update entry.") }

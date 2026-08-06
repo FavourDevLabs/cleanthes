@@ -20,7 +20,11 @@ class FakeSessionManager : SessionManager {
         _lockState.value = false
     }
 
-    override fun getSessionKey(): SecretKey? = key
+    override suspend fun <T> withSessionKey(block: suspend (SecretKey) -> T): T? {
+        val currentKey = key ?: return null
+        if (_lockState.value) return null
+        return block(currentKey)
+    }
 
     override fun clearSession() {
         key = null

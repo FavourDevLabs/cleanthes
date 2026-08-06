@@ -32,15 +32,17 @@ class ImportViewModel
             encryptedBlob: String,
             exportPassword: String,
         ) {
-            val key =
-                sessionManager.getSessionKey() ?: run {
-                    _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
-                    return
-                }
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             viewModelScope.launch {
                 try {
-                    val result = importCitadel(encryptedBlob, exportPassword, key)
+                    val result =
+                        sessionManager.withSessionKey { key ->
+                            importCitadel(encryptedBlob, exportPassword, key)
+                        }
+                    if (result == null) {
+                        _uiState.update { it.copy(isLoading = false, errorMessage = "Session expired. Please unlock again.") }
+                        return@launch
+                    }
                     _uiState.update { it.copy(isLoading = false, result = result) }
                 } catch (_: Exception) {
                     _uiState.update {

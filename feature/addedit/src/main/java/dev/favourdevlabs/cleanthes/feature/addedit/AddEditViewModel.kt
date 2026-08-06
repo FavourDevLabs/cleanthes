@@ -1,5 +1,4 @@
 package dev.favourdevlabs.cleanthes.feature.addedit
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,12 +72,7 @@ class AddEditViewModel
             _uiState.update { it.copy(isEditMode = true, isLoading = true) }
             viewModelScope.launch {
                 try {
-                    val key =
-                        sessionManager.getSessionKey() ?: run {
-                            _events.send(AddEditEvent.NavigateBack)
-                            return@launch
-                        }
-                    val item = getCitadelEntry(entryId, key)
+                    val item = sessionManager.withSessionKey { key -> getCitadelEntry(entryId, key) }
                     if (item == null) {
                         _events.send(AddEditEvent.NavigateBack)
                         return@launch
@@ -200,57 +194,58 @@ class AddEditViewModel
                 return
             }
 
-            val key =
-                sessionManager.getSessionKey() ?: run {
-                    viewModelScope.launch { _events.send(AddEditEvent.NavigateBack) }
-                    return
-                }
-
             val finalTotp = totpRaw.ifEmpty { null }
             val finalIssuer = if (finalTotp != null) s.totpIssuer else null
 
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             viewModelScope.launch {
                 try {
-                    if (s.isEditMode && existingEntry != null) {
-                        // CitadelItem is immutable — use copy() instead of mutation
-                        val updated =
-                            existingEntry!!.copy(
-                                title = title,
-                                username = username,
-                                website = s.website.trim().ifEmpty { null },
-                                category = s.category,
-                                notes = s.notes.trim().ifEmpty { null },
-                                isFavorite = s.isFavorite,
-                                totpSecret = finalTotp,
-                                totpIssuer = finalIssuer,
-                                totpAlgorithm = s.totpAlgorithm,
-                                totpDigits = s.totpDigits,
-                                totpPeriod = s.totpPeriod,
-                            )
-                        saveCitadelEntry(SaveCitadelEntry.Params.Edit(updated, password, key))
-                        recordAuditEvent(RecordAuditEvent.EventType.ENTRY_EDITED, updated.id, updated.title)
-                        existingEntry = updated // update in-memory ref only after confirmed success
-                    } else {
-                        val newId =
-                            saveCitadelEntry(
-                                SaveCitadelEntry.Params.New(
-                                    title = title,
-                                    username = username,
-                                    plainPassword = password,
-                                    website = s.website.trim().ifEmpty { null },
-                                    category = s.category,
-                                    notes = s.notes.trim().ifEmpty { null },
-                                    isFavorite = s.isFavorite,
-                                    totpSecret = finalTotp,
-                                    totpIssuer = finalIssuer,
-                                    totpDigits = s.totpDigits,
-                                    totpPeriod = s.totpPeriod,
-                                    totpAlgorithm = s.totpAlgorithm,
-                                    key = key,
-                                ),
-                            )
-                        recordAuditEvent(RecordAuditEvent.EventType.ENTRY_CREATED, newId, title)
+                    val saved =
+                        sessionManager.withSessionKey { key ->
+                            if (s.isEditMode && existingEntry != null) {
+                                // CitadelItem is immutable — use copy() instead of mutation
+                                val updated =
+                                    existingEntry!!.copy(
+                                        title = title,
+                                        username = username,
+                                        website = s.website.trim().ifEmpty { null },
+                                        category = s.category,
+                                        notes = s.notes.trim().ifEmpty { null },
+                                        isFavorite = s.isFavorite,
+                                        totpSecret = finalTotp,
+                                        totpIssuer = finalIssuer,
+                                        totpAlgorithm = s.totpAlgorithm,
+                                        totpDigits = s.totpDigits,
+                                        totpPeriod = s.totpPeriod,
+                                    )
+                                saveCitadelEntry(SaveCitadelEntry.Params.Edit(updated, password, key))
+                                recordAuditEvent(RecordAuditEvent.EventType.ENTRY_EDITED, updated.id, updated.title)
+                                existingEntry = updated // update in-memory ref only after confirmed success
+                            } else {
+                                val newId =
+                                    saveCitadelEntry(
+                                        SaveCitadelEntry.Params.New(
+                                            title = title,
+                                            username = username,
+                                            plainPassword = password,
+                                            website = s.website.trim().ifEmpty { null },
+                                            category = s.category,
+                                            notes = s.notes.trim().ifEmpty { null },
+                                            isFavorite = s.isFavorite,
+                                            totpSecret = finalTotp,
+                                            totpIssuer = finalIssuer,
+                                            totpDigits = s.totpDigits,
+                                            totpPeriod = s.totpPeriod,
+                                            totpAlgorithm = s.totpAlgorithm,
+                                            key = key,
+                                        ),
+                                    )
+                                recordAuditEvent(RecordAuditEvent.EventType.ENTRY_CREATED, newId, title)
+                            }
+                        }
+                    if (saved == null) {
+                        _uiState.update { it.copy(isLoading = false, errorMessage = "Session expired. Please unlock again.") }
+                        return@launch
                     }
                     _events.send(AddEditEvent.NavigateBack)
                 } catch (_: Exception) {

@@ -39,7 +39,11 @@ class SessionManagerImpl
             scheduleInactivityTimeout()
         }
 
-        override fun getSessionKey(): SecretKey? = sessionKey
+        override suspend fun <T> withSessionKey(block: suspend (SecretKey) -> T): T? {
+            val key = sessionKey ?: return null
+            if (_lockState.value) return null
+            return block(key)
+        }
 
         override fun refreshSession() {
             if (sessionKey != null) {

@@ -49,14 +49,17 @@ class RotateKeyViewModel @Inject constructor(
     private var pendingNewCitadelKey: SecretKey? = null
 
     fun onRotationConfirmed(masterPassword: String) {
-        val currentKey = sessionManager.getSessionKey() ?: run {
-            _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
-            return
-        }
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val result = rotateCitadelKey(masterPassword, currentKey)
+                val result =
+                    sessionManager.withSessionKey { currentKey ->
+                        rotateCitadelKey(masterPassword, currentKey)
+                    }
+                if (result == null) {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Session expired. Please unlock again.") }
+                    return@launch
+                }
                 sessionManager.setSessionKey(result.newCitadelKey)
                 recordAuditEvent(RecordAuditEvent.EventType.KEY_ROTATED)
 

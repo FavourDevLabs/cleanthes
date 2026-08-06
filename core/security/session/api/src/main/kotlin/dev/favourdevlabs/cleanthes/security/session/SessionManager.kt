@@ -13,17 +13,23 @@ import javax.crypto.SecretKey
  * backgrounded (all activities stopped) before the session is cleared, and
  * a 2min foreground inactivity timeout clears the session even while the
  * app stays open, if [refreshSession] is not called in that window.
+ *
+ * There is deliberately no raw key getter. [withSessionKey] is the only way
+ * to access the session key — it checks the lock state at call time and
+ * never lets a bare SecretKey reference escape into caller-held state, so a
+ * later [clearSession] cannot be bypassed by a reference grabbed earlier.
+ * NOTE: this does not cancel a [block] already in flight if the session
+ * clears mid-execution — only bounds how long a caller can hold the key.
  */
 interface SessionManager {
     /** true = locked / no usable key. Replays current value to new subscribers. */
     val lockState: StateFlow<Boolean>
     fun setSessionKey(key: SecretKey)
     /**
-     * Returns the current session key, or null if locked/expired.
-     * NOTE: the returned reference is NOT invalidated by a later clearSession()
-     * call — callers must not cache this beyond the immediate operation.
+     * Runs [block] with the current session key if unlocked, returning its
+     * result. Returns null without invoking [block] if locked/expired.
      */
-    fun getSessionKey(): SecretKey?
+    suspend fun <T> withSessionKey(block: suspend (SecretKey) -> T): T?
     fun clearSession()
     fun refreshSession()
     /**

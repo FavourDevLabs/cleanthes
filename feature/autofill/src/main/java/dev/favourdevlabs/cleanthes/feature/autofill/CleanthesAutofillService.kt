@@ -134,12 +134,6 @@ class CleanthesAutofillService : AutofillService() {
         request: SaveRequest,
         callback: SaveCallback,
     ) {
-        val secretKey = sessionManager.getSessionKey()
-        if (secretKey == null) {
-            callback.onSuccess()
-            return
-        }
-
         val contexts = request.fillContexts
         if (contexts.isEmpty()) {
             callback.onSuccess()
@@ -180,21 +174,28 @@ class CleanthesAutofillService : AutofillService() {
         }
 
         serviceScope.launch(handler) {
-            repository.addEntry(
-                title = key,
-                userName = username,
-                plainPassword = password,
-                website = key,
-                category = "Autofill",
-                notes = null,
-                isFavorite = false,
-                plainTotpSecret = null,
-                totpIssuer = null,
-                totpDigits = 6,
-                totpPeriod = 30,
-                totpAlgorithm = "SHA1",
-                key = secretKey,
-            )
+            val saved =
+                sessionManager.withSessionKey { secretKey ->
+                    repository.addEntry(
+                        title = key,
+                        userName = username,
+                        plainPassword = password,
+                        website = key,
+                        category = "Autofill",
+                        notes = null,
+                        isFavorite = false,
+                        plainTotpSecret = null,
+                        totpIssuer = null,
+                        totpDigits = 6,
+                        totpPeriod = 30,
+                        totpAlgorithm = "SHA1",
+                        key = secretKey,
+                    )
+                }
+            if (saved == null) {
+                callback.onFailure("Session expired. Please unlock Cleanthes and try again.")
+                return@launch
+            }
             callback.onSuccess()
         }
     }

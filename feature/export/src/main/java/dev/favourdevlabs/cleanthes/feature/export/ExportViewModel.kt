@@ -37,20 +37,18 @@ class ExportViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ExportUiState())
         val uiState: StateFlow<ExportUiState> = _uiState.asStateFlow()
-
         private val _events = Channel<ExportEvent>(Channel.BUFFERED)
         val events = _events.receiveAsFlow()
 
         fun onExportConfirmed(exportPassword: String) {
-            val key =
-                sessionManager.getSessionKey() ?: run {
-                    _uiState.update { it.copy(errorMessage = "Session expired. Please unlock again.") }
-                    return
-                }
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             viewModelScope.launch {
                 try {
-                    val blob = exportCitadel(exportPassword, key)
+                    val blob = sessionManager.withSessionKey { key -> exportCitadel(exportPassword, key) }
+                    if (blob == null) {
+                        _uiState.update { it.copy(isLoading = false, errorMessage = "Session expired. Please unlock again.") }
+                        return@launch
+                    }
                     _uiState.update { it.copy(isLoading = false) }
                     _events.send(ExportEvent.LaunchSaveFile(blob))
                 } catch (_: Exception) {

@@ -58,12 +58,7 @@ class DetailViewModel
             viewModelScope.launch {
                 _uiState.update { it.copy(isLoading = true) }
                 try {
-                    val key =
-                        sessionManager.getSessionKey() ?: run {
-                            _uiState.update { it.copy(shouldFinish = true) }
-                            return@launch
-                        }
-                    val item = getCitadelEntry(entryId, key)
+                    val item = sessionManager.withSessionKey { key -> getCitadelEntry(entryId, key) }
                     if (item == null) {
                         _uiState.update { it.copy(shouldFinish = true) }
                         return@launch
