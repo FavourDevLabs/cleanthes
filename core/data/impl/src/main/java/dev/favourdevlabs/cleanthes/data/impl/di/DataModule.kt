@@ -30,6 +30,8 @@ import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.EnrolBiometricImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.InitialiseCitadelImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.LoadCitadelCredentialsImpl
 import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.RotateCitadelKeyImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.RequestReAuthImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.VerifyMasterPasswordImpl
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.ExportCitadel
 import dev.favourdevlabs.cleanthes.domain.usecase.GetAuditLog
@@ -40,6 +42,8 @@ import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.domain.usecase.RotateCitadelKey
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.UnlockCitadel
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.domain.usecase.VerifyMasterPassword
 import javax.inject.Singleton
 
 @Module
@@ -98,4 +102,10 @@ abstract class DataModule {
 
     @Binds @Singleton
     abstract fun bindGetActiveCitadelProfile(impl: GetActiveCitadelProfileImpl): GetActiveCitadelProfile
+
+    @Binds @Singleton
+    abstract fun bindRequestReAuth(impl: RequestReAuthImpl): RequestReAuth
+
+    @Binds @Singleton
+    abstract fun bindVerifyMasterPassword(impl: VerifyMasterPasswordImpl): VerifyMasterPassword
 }
