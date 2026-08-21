@@ -4,6 +4,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import kotlinx.coroutines.flow.collectLatest
 import androidx.activity.viewModels
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -85,6 +97,55 @@ class DetailActivity : AuthenticatedActivity() {
                     if (uiState.shouldFinish) finish()
                 }
 
+                var showPasswordDialog by remember { mutableStateOf(false) }
+                var passwordError by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    viewModel.challengeEvent.collectLatest { challenge ->
+                        when (challenge) {
+                            is RequestReAuth.Challenge.Biometric -> {
+                                BiometricHelper.authenticate(
+                                    activity = this@DetailActivity,
+                                    cipher = challenge.cipher,
+                                    callback =
+                                        object : BiometricHelper.AuthCallback {
+                                            override fun onSuccess(cipher: javax.crypto.Cipher) =
+    viewModel.onBiometricReAuthSucceeded()
+
+                                            override fun onFailure() {}
+
+                                            override fun onError(errorMessage: String) {}
+                                        },
+                                )
+                            }
+                            RequestReAuth.Challenge.MasterPassword -> showPasswordDialog = true
+                            RequestReAuth.Challenge.NotRequired -> {}
+                        }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    viewModel.masterPasswordResult.collectLatest { verified ->
+                        if (verified) {
+                            showPasswordDialog = false
+                            passwordError = false
+                        } else {
+                            passwordError = true
+                        }
+                    }
+                }
+
+                if (showPasswordDialog) {
+                    MasterPasswordDialog(
+                        isError = passwordError,
+                        onConfirm = { password -> viewModel.submitMasterPassword(password) },
+                        onDismiss = {
+                            showPasswordDialog = false
+                            passwordError = false
+                        },
+                    )
+                }
+
                 DetailScreen(
                     uiState = uiState,
                     onBack = { finish() },
@@ -96,7 +157,7 @@ class DetailActivity : AuthenticatedActivity() {
                             },
                         )
                     },
-                    onTogglePassword = viewModel::togglePasswordVisibility,
+                    onTogglePassword = viewModel::onRevealPasswordClicked,
                     onCopy = ::copyToClipboard,
                 )
             }
@@ -412,4 +473,44 @@ private fun TotpSection(
             trackColor = SurfaceModal,
         )
     }
+}
+
+@Composable
+private fun MasterPasswordDialog(
+    isError: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Confirm master password") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Master password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isError,
+                    singleLine = true,
+                )
+                if (isError) {
+                    Text(
+                        text = "Incorrect password",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(password) }) { Text("Confirm") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }

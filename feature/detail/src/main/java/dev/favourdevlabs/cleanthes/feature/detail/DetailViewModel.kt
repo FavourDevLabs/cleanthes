@@ -8,6 +8,11 @@ import dev.favourdevlabs.cleanthes.domain.otp.TOTPGenerator
 import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntry
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.security.session.SessionManager
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.domain.usecase.VerifyMasterPassword
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,9 +52,17 @@ class DetailViewModel
         private val getCitadelEntry: GetCitadelEntry,
         private val sessionManager: SessionManager,
         private val recordAuditEvent: RecordAuditEvent,
+        private val requestReAuth: RequestReAuth,
+        private val verifyMasterPassword: VerifyMasterPassword,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DetailUiState())
         val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
+
+        private val _challengeEvent = Channel<RequestReAuth.Challenge>(Channel.BUFFERED)
+        val challengeEvent: Flow<RequestReAuth.Challenge> = _challengeEvent.receiveAsFlow()
+
+        private val _masterPasswordResult = Channel<Boolean>(Channel.BUFFERED)
+        val masterPasswordResult: Flow<Boolean> = _masterPasswordResult.receiveAsFlow()
 
         private var currentItem: CitadelItem? = null
         private var totpJob: Job? = null
@@ -87,7 +100,30 @@ class DetailViewModel
             }
         }
 
-        fun togglePasswordVisibility() = _uiState.update { it.copy(passwordVisible = !it.passwordVisible) }
+        fun onRevealPasswordClicked() {
+            if (_uiState.value.passwordVisible) {
+                _uiState.update { it.copy(passwordVisible = false) }
+                return
+            }
+            viewModelScope.launch {
+                when (val challenge = requestReAuth(RequestReAuth.SensitiveAction.REVEAL_PASSWORD)) {
+                    RequestReAuth.Challenge.NotRequired -> _uiState.update { it.copy(passwordVisible = true) }
+                    else -> _challengeEvent.send(challenge)
+                }
+            }
+        }
+
+        fun onBiometricReAuthSucceeded() {
+            _uiState.update { it.copy(passwordVisible = true) }
+        }
+
+        fun submitMasterPassword(password: String) {
+            viewModelScope.launch {
+                val verified = verifyMasterPassword(password)
+                if (verified) _uiState.update { it.copy(passwordVisible = true) }
+                _masterPasswordResult.send(verified)
+            }
+        }
 
         fun pauseTotpUpdater() = stopTotpUpdater()
 
