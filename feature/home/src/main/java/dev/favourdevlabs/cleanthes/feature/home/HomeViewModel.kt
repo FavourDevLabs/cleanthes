@@ -7,6 +7,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
 import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.domain.usecase.DeleteCitadelEntry
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.domain.usecase.VerifyMasterPassword
 import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelEntries
 import dev.favourdevlabs.cleanthes.domain.usecase.RecordAuditEvent
 import dev.favourdevlabs.cleanthes.domain.usecase.SaveCitadelEntry
@@ -59,6 +61,8 @@ class HomeViewModel
         private val saveCitadelEntry: SaveCitadelEntry,
         private val sessionManager: SessionManager,
         private val getFaviconIcon: GetFaviconIcon,
+        private val requestReAuth: RequestReAuth,
+        private val verifyMasterPassword: VerifyMasterPassword,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(HomeUiState())
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -141,6 +145,10 @@ class HomeViewModel
                 }
             }
         }
+
+        suspend fun requestDeleteReAuth(): RequestReAuth.Challenge = requestReAuth(RequestReAuth.SensitiveAction.DELETE_ENTRY)
+
+        suspend fun verifyPasswordForDelete(password: String): Boolean = verifyMasterPassword(password)
 
         fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 

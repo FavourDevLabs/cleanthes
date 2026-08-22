@@ -15,6 +15,15 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +125,7 @@ class HomeActivity : AuthenticatedActivity() {
             CleanthesTheme {
                 HomeScreen(
                     viewModel = viewModel,
+                    activity = this,
                     onEntryClick = { entry ->
                         startActivity(
                             Intent().apply {
@@ -175,6 +185,7 @@ class HomeActivity : AuthenticatedActivity() {
 @Composable
 private fun HomeScreen(
     viewModel: HomeViewModel,
+    activity: HomeActivity,
     onEntryClick: (CitadelItem) -> Unit,
     onCopyPassword: (String) -> Unit,
     onAddNew: () -> Unit,
@@ -185,6 +196,35 @@ private fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var searchVisible by remember { mutableStateOf(false) }
+
+    var passwordChallengeEntryId by remember { mutableStateOf<Long?>(null) }
+    var passwordChallengeError by remember { mutableStateOf(false) }
+    var onPasswordChallengeResult by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+
+    passwordChallengeEntryId?.let {
+        MasterPasswordDialog(
+            isError = passwordChallengeError,
+            onConfirm = { password ->
+                scope.launch {
+                    val verified = viewModel.verifyPasswordForDelete(password)
+                    if (verified) {
+                        passwordChallengeError = false
+                        passwordChallengeEntryId = null
+                        onPasswordChallengeResult?.invoke(true)
+                        onPasswordChallengeResult = null
+                    } else {
+                        passwordChallengeError = true
+                    }
+                }
+            },
+            onDismiss = {
+                passwordChallengeEntryId = null
+                passwordChallengeError = false
+                onPasswordChallengeResult?.invoke(false)
+                onPasswordChallengeResult = null
+            },
+        )
+    }
 
     // Error → snackbar (one-shot)
     LaunchedEffect(uiState.errorMessage) {
@@ -313,12 +353,32 @@ private fun HomeScreen(
                                 items = uiState.filteredEntries,
                                 key = { it.id },
                             ) { entry ->
-                                val dismissState =
+                                lateinit var dismissState: SwipeToDismissBoxState
+                                dismissState =
                                     rememberSwipeToDismissBoxState(
                                         confirmValueChange = { value ->
                                             if (value == SwipeToDismissBoxValue.EndToStart) {
                                                 // Screen-level scope — survives item leaving composition
                                                 scope.launch {
+                                                    val challenge = viewModel.requestDeleteReAuth()
+                                                    val allowed =
+                                                        when (challenge) {
+                                                            is RequestReAuth.Challenge.Biometric ->
+                                                                activity.awaitBiometricReAuth(challenge.cipher)
+                                                            RequestReAuth.Challenge.MasterPassword ->
+                                                                suspendCancellableCoroutine { continuation ->
+                                                                    passwordChallengeEntryId = entry.id
+                                                                    passwordChallengeError = false
+                                                                    onPasswordChallengeResult = { result ->
+                                                                        if (continuation.isActive) continuation.resume(result)
+                                                                    }
+                                                                }
+                                                            RequestReAuth.Challenge.NotRequired -> true
+                                                        }
+                                                    if (!allowed) {
+                                                        dismissState.reset()
+                                                        return@launch
+                                                    }
                                                     viewModel.onEntrySwipedToDelete(entry.id)
                                                     val result =
                                                         snackbarHostState.showSnackbar(
@@ -389,6 +449,28 @@ private fun HomeScreen(
         }
     }
 }
+
+private suspend fun HomeActivity.awaitBiometricReAuth(cipher: javax.crypto.Cipher): Boolean =
+    suspendCancellableCoroutine { continuation ->
+        BiometricHelper.authenticate(
+            activity = this,
+            cipher = cipher,
+            callback =
+                object : BiometricHelper.AuthCallback {
+                    override fun onSuccess(cipher: javax.crypto.Cipher) {
+                        if (continuation.isActive) continuation.resume(true)
+                    }
+
+                    override fun onFailure() {
+                        if (continuation.isActive) continuation.resume(false)
+                    }
+
+                    override fun onError(errorMessage: String) {
+                        if (continuation.isActive) continuation.resume(false)
+                    }
+                },
+        )
+    }
 
 // ── Composable primitives ─────────────────────────────────────────────────────
 
@@ -619,6 +701,46 @@ private fun EmptyState(
             },
         )
     }
+}
+
+@Composable
+private fun MasterPasswordDialog(
+    isError: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Confirm master password") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Master password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isError,
+                    singleLine = true,
+                )
+                if (isError) {
+                    Text(
+                        text = "Incorrect password",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(password) }) { Text("Confirm") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 // Category avatar color — mirrors CitadelEntryViewHolder.categoryColor()

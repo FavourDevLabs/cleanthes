@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:data:api"))
     implementation(project(":core:security:session:api"))
+    implementation(project(":core:security"))
     implementation(project(":core:common"))
 
     val composeBom = "2024.12.01"
