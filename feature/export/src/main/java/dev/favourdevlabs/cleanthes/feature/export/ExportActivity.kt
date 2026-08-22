@@ -26,6 +26,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
+import dev.favourdevlabs.cleanthes.security.BiometricHelper
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -76,6 +82,55 @@ class ExportActivity : AuthenticatedActivity() {
         setContent {
             CleanthesTheme {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+                var showMasterPasswordDialog by remember { mutableStateOf(false) }
+                var masterPasswordError by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    viewModel.challengeEvent.collect { challenge ->
+                        when (challenge) {
+                            is RequestReAuth.Challenge.Biometric -> {
+                                BiometricHelper.authenticate(
+                                    activity = this@ExportActivity,
+                                    cipher = challenge.cipher,
+                                    callback =
+                                        object : BiometricHelper.AuthCallback {
+                                            override fun onSuccess(cipher: javax.crypto.Cipher) =
+                                                viewModel.onBiometricReAuthSucceeded()
+
+                                            override fun onFailure() {}
+
+                                            override fun onError(errorMessage: String) {}
+                                        },
+                                )
+                            }
+                            RequestReAuth.Challenge.MasterPassword -> showMasterPasswordDialog = true
+                            RequestReAuth.Challenge.NotRequired -> {}
+                        }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    viewModel.masterPasswordResult.collect { verified ->
+                        if (verified) {
+                            showMasterPasswordDialog = false
+                            masterPasswordError = false
+                        } else {
+                            masterPasswordError = true
+                        }
+                    }
+                }
+
+                if (showMasterPasswordDialog) {
+                    MasterPasswordDialog(
+                        isError = masterPasswordError,
+                        onConfirm = { password -> viewModel.submitMasterPassword(password) },
+                        onDismiss = {
+                            showMasterPasswordDialog = false
+                            masterPasswordError = false
+                        },
+                    )
+                }
 
                 LaunchedEffect(Unit) {
                     viewModel.events.collect { event ->
@@ -302,6 +357,47 @@ private fun ExportPasswordDialog(
             ) {
                 Text("Export", color = GoldPrimary)
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
+        },
+        containerColor = SurfaceElevated,
+    )
+}
+
+@Composable
+private fun MasterPasswordDialog(
+    isError: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Confirm master password", color = TextPrimary) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Master password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isError,
+                    singleLine = true,
+                )
+                if (isError) {
+                    Text(
+                        text = "Incorrect password",
+                        color = Color(0xFFCF6679),
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(password) }) { Text("Confirm", color = GoldPrimary) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
