@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.autofill.AutofillManager
 import androidx.activity.compose.setContent
+import dev.favourdevlabs.cleanthes.attestation.api.AttestationResult
+import dev.favourdevlabs.cleanthes.attestation.api.KeyAttestationVerifier
+import dev.favourdevlabs.cleanthes.attestation.api.SecurityLevel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -65,11 +68,13 @@ class SettingsActivity : AuthenticatedActivity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var autofillManager: AutofillManager
     @Inject lateinit var getActiveCitadelProfile: GetActiveCitadelProfile
+     @Inject lateinit var keyAttestationVerifier: KeyAttestationVerifier
 
     // Compose-observable state — mutated by onResume
     private var autofillActive by mutableStateOf(false)
 
     private var showDecoyOption by mutableStateOf(false)
+    private var attestationResult by mutableStateOf<AttestationResult?>(null)
 
     private val versionName: String by lazy {
         try {
@@ -86,6 +91,10 @@ class SettingsActivity : AuthenticatedActivity() {
 
         lifecycleScope.launch {
             showDecoyOption = getActiveCitadelProfile() == CitadelProfile.REAL
+        }
+
+                lifecycleScope.launch {
+            attestationResult = keyAttestationVerifier.verify()
         }
 
         setContent {
@@ -121,6 +130,7 @@ class SettingsActivity : AuthenticatedActivity() {
                             },
                         )
                     },
+                    attestationResult = attestationResult,
                     onRotateKeyClick = {
                         startActivity(
                             Intent().apply {
@@ -158,6 +168,7 @@ private fun SettingsScreen(
     onAuditLogClick: () -> Unit,
     onExportClick: () -> Unit,
     onImportClick: () -> Unit,
+    attestationResult: AttestationResult?,
     onRotateKeyClick: () -> Unit,
     onSetupDecoyClick: () -> Unit,
     onBack: () -> Unit,
@@ -216,6 +227,15 @@ private fun SettingsScreen(
                 showChevron = true,
                 onClick = onRotateKeyClick,
             )
+
+                        SettingsRow(
+                title = "Device Attestation",
+                value = attestationTierLabel(attestationResult),
+                valueColor = attestationTierColor(attestationResult),
+                showChevron = false,
+                onClick = null,
+            )
+            
             if (showDecoyOption) {
                 SettingsRow(
                     title = "Set Up Decoy Citadel",
@@ -345,6 +365,21 @@ private fun SettingsRow(
             )
         }
     }
+}
+
+private fun attestationTierLabel(result: AttestationResult?): String = when {
+    result == null -> "Checking…"
+    !result.chainValid -> "Unverified"
+    result.securityLevel == SecurityLevel.STRONG_BOX -> "StrongBox"
+    result.securityLevel == SecurityLevel.TRUSTED_ENVIRONMENT -> "Hardware (TEE)"
+    else -> "Software"
+}
+
+private fun attestationTierColor(result: AttestationResult?): Color = when {
+    result == null -> TextSecondary
+    !result.chainValid -> Color.Red
+    result.securityLevel == SecurityLevel.SOFTWARE -> Color.Red
+    else -> Success
 }
 
 @Composable
