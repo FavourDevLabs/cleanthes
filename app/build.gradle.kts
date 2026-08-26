@@ -109,6 +109,8 @@ dependencies {
     implementation(project(":feature:detail"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:autofill"))
+    implementation(project(":core:security:attestation:api"))
+    implementation(project(":core:security:attestation:impl"))
     implementation(project(":feature:auditlog"))
     implementation(project(":feature:export"))
 
