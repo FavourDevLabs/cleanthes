@@ -14,6 +14,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.Dispatchers
+import dev.favourdevlabs.cleanthes.data.api.usecase.CheckPasswordBreach
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,8 @@ data class DetailUiState(
     val totpCode: String = "",
     val totpPeriod: Int = 30,
     val totpSecondsRemaining: Int = 30,
+    val isCheckingBreach: Boolean = false,
+    val breachResult: CheckPasswordBreach.Result? = null,
 ) {
     val displayPassword: String
         get() = if (passwordVisible) password else "••••••••••••"
@@ -54,6 +57,7 @@ class DetailViewModel
         private val recordAuditEvent: RecordAuditEvent,
         private val requestReAuth: RequestReAuth,
         private val verifyMasterPassword: VerifyMasterPassword,
+        private val checkPasswordBreach: CheckPasswordBreach,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DetailUiState())
         val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
@@ -115,6 +119,17 @@ class DetailViewModel
 
         fun onBiometricReAuthSucceeded() {
             _uiState.update { it.copy(passwordVisible = true) }
+        }
+
+        fun onCheckBreachClicked() {
+            if (!_uiState.value.passwordVisible) return
+            val password = _uiState.value.password
+            if (password.isEmpty()) return
+            viewModelScope.launch {
+                _uiState.update { it.copy(isCheckingBreach = true) }
+                val result = checkPasswordBreach(password)
+                _uiState.update { it.copy(isCheckingBreach = false, breachResult = result) }
+            }
         }
 
         fun submitMasterPassword(password: String) {

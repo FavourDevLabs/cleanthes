@@ -13,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.clickable
+import dev.favourdevlabs.cleanthes.data.api.usecase.CheckPasswordBreach
 import dev.favourdevlabs.cleanthes.domain.usecase.RequestReAuth
 import dev.favourdevlabs.cleanthes.security.BiometricHelper
 import kotlinx.coroutines.flow.collectLatest
@@ -158,6 +160,7 @@ class DetailActivity : AuthenticatedActivity() {
                         )
                     },
                     onTogglePassword = viewModel::onRevealPasswordClicked,
+                    onCheckBreach = viewModel::onCheckBreachClicked,
                     onCopy = ::copyToClipboard,
                 )
             }
@@ -192,6 +195,7 @@ private fun DetailScreen(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onTogglePassword: () -> Unit,
+    onCheckBreach: () -> Unit,
     onCopy: (label: String, value: String) -> Unit,
 ) {
     Column(
@@ -210,6 +214,7 @@ private fun DetailScreen(
             DetailContent(
                 uiState = uiState,
                 onTogglePassword = onTogglePassword,
+                onCheckBreach = onCheckBreach,
                 onCopy = onCopy,
             )
         }
@@ -274,6 +279,7 @@ private fun DetailToolbar(
 private fun DetailContent(
     uiState: DetailUiState,
     onTogglePassword: () -> Unit,
+    onCheckBreach: () -> Unit,
     onCopy: (label: String, value: String) -> Unit,
 ) {
     Column(
@@ -332,6 +338,16 @@ private fun DetailContent(
             IconButton(onClick = { onCopy("password", uiState.password) }) {
                 Icon(Icons.Default.ContentCopy, contentDescription = "Copy password", tint = GoldPrimary)
             }
+        }
+
+        // Breach check (only after password is revealed)
+        if (uiState.passwordVisible) {
+            Spacer(Modifier.height(8.dp))
+            BreachCheckSection(
+                isChecking = uiState.isCheckingBreach,
+                result = uiState.breachResult,
+                onCheck = onCheckBreach,
+            )
         }
 
         // TOTP (conditional)
@@ -472,6 +488,46 @@ private fun TotpSection(
             color = GoldPrimary,
             trackColor = SurfaceModal,
         )
+    }
+}
+
+@Composable
+private fun BreachCheckSection(
+    isChecking: Boolean,
+    result: CheckPasswordBreach.Result?,
+    onCheck: () -> Unit,
+) {
+    when {
+        isChecking -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Checking...", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+        }
+        result != null -> {
+            Text(
+                text = if (result.breached) {
+                    "⚠ Found in ${result.breachCount} known breaches"
+                } else {
+                    "✓ Not found in known breaches"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (result.breached) MaterialTheme.colorScheme.error else TextSecondary,
+            )
+        }
+        else -> {
+            Text(
+                text = "Check for breaches",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                color = GoldPrimary,
+                modifier = Modifier.clickable(onClick = onCheck),
+            )
+        }
     }
 }
 
