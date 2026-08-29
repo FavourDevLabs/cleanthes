@@ -10,8 +10,6 @@ import javax.inject.Inject
 
 class CheckPasswordBreachImpl @Inject constructor() : CheckPasswordBreach {
 
-    private val notBreached = CheckPasswordBreach.Result(breached = false, breachCount = 0)
-
     private fun sha1Hex(input: String): String {
         val digest = MessageDigest.getInstance("SHA-1").digest(input.toByteArray())
         return digest.joinToString("") { "%02X".format(it) }
@@ -33,26 +31,26 @@ class CheckPasswordBreachImpl @Inject constructor() : CheckPasswordBreach {
 
                 try {
                     if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                        return@withContext notBreached
+                        return@withContext CheckPasswordBreach.Result.CheckFailed
                     }
 
                     connection.inputStream.bufferedReader().useLines { lines ->
                         for (line in lines) {
                             val (returnedSuffix, count) = line.split(":")
                             if (returnedSuffix == suffix) {
-                                return@withContext CheckPasswordBreach.Result(
-                                    breached = true,
+                                return@withContext CheckPasswordBreach.Result.Breached(
                                     breachCount = count.trim().toInt(),
                                 )
                             }
                         }
                     }
-                    notBreached
+                    CheckPasswordBreach.Result.Safe
                 } finally {
                     connection.disconnect()
                 }
-            } catch (_: Exception) {
-                notBreached
+            } catch (e: Exception) {
+                android.util.Log.e("BreachCheck", "FAILED", e)
+                CheckPasswordBreach.Result.CheckFailed
             }
         }
 

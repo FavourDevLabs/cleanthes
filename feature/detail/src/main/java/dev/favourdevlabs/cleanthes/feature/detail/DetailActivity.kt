@@ -509,17 +509,29 @@ private fun BreachCheckSection(
                 Text("Checking...", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
-        result != null -> {
+                result is CheckPasswordBreach.Result.Breached -> {
             Text(
-                text = if (result.breached) {
-                    "⚠ Found in ${result.breachCount} known breaches"
-                } else {
-                    "✓ Not found in known breaches"
-                },
+                text = "⚠ Found in ${result.breachCount} known breaches",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (result.breached) MaterialTheme.colorScheme.error else TextSecondary,
+                color = MaterialTheme.colorScheme.error,
             )
         }
+        result is CheckPasswordBreach.Result.Safe -> {
+            Text(
+                text = "✓ Not found in known breaches",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+            )
+        }
+        result is CheckPasswordBreach.Result.CheckFailed -> {
+            Text(
+                text = "Couldn't check - tap to retry",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                color = TextSecondary,
+                modifier = Modifier.clickable(onClick = onCheck),
+            )
+        }
+
         else -> {
             Text(
                 text = "Check for breaches",
