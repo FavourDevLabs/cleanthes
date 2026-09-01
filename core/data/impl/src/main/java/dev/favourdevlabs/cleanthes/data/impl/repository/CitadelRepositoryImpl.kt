@@ -34,17 +34,17 @@ class CitadelRepositoryImpl @Inject constructor(
         key: SecretKey,
     ): Long = withContext(Dispatchers.IO) {
         val encPwd  = CryptoManager.encrypt(plainPassword, key)
-        val encTotp = if (!plainTotpSecret.isNullOrEmpty())
-            CryptoManager.encrypt(plainTotpSecret, key) else null
+val encTotp = if (!plainTotpSecret.isNullOrEmpty())
+    CryptoManager.encrypt(plainTotpSecret, key) else null
 
-        val now = System.currentTimeMillis()
-        val entry = CitadelEntry(
-            title             = title,
-            username          = userName,
-            encryptedPassword = encPwd,
-            website           = website,
-            category          = category,
-            notes             = notes,
+val now = System.currentTimeMillis()
+val entry = CitadelEntry(
+    title             = CryptoManager.encrypt(title, key),
+    username          = CryptoManager.encrypt(userName, key),
+    encryptedPassword = encPwd,
+    website           = website?.let { CryptoManager.encrypt(it, key) },
+    category          = category,
+    notes             = notes?.let { CryptoManager.encrypt(it, key) },
             isFavorite        = isFavorite,
             createdAt         = now,
             updatedAt         = now,
@@ -65,11 +65,15 @@ class CitadelRepositoryImpl @Inject constructor(
         key: SecretKey,
     ): Int = withContext(Dispatchers.IO) {
         val entity = item.toEntity().apply {
-            encryptedPassword = CryptoManager.encrypt(plainPassword, key)
-            totpSecret = if (!item.totpSecret.isNullOrEmpty())
-                CryptoManager.encrypt(item.totpSecret!!, key) else null
-            updatedAt = System.currentTimeMillis()
-        }
+    title = CryptoManager.encrypt(item.title, key)
+    username = CryptoManager.encrypt(item.username, key)
+    encryptedPassword = CryptoManager.encrypt(plainPassword, key)
+    website = item.website?.let { CryptoManager.encrypt(it, key) }
+    notes = item.notes?.let { CryptoManager.encrypt(it, key) }
+    totpSecret = if (!item.totpSecret.isNullOrEmpty())
+        CryptoManager.encrypt(item.totpSecret!!, key) else null
+    updatedAt = System.currentTimeMillis()
+}
         switchboard.citadelDao().update(entity)
     }
 
@@ -80,9 +84,12 @@ class CitadelRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) { switchboard.citadelDao().deleteAll() }
 
     override suspend fun getAllEntries(key: SecretKey): List<CitadelItem> =
-        withContext(Dispatchers.IO) {
-            switchboard.citadelDao().getAllEntries().map { decrypt(it, key).toDomain() }
-        }
+    withContext(Dispatchers.IO) {
+        switchboard.citadelDao().getAllEntries()
+            .map { decrypt(it, key) }
+            .sortedWith(compareByDescending<CitadelEntry> { it.isFavorite }.thenBy { it.title })
+            .map { it.toDomain() }
+    }
 
     override suspend fun getEntryById(id: Long, key: SecretKey): CitadelItem? =
         withContext(Dispatchers.IO) {
@@ -90,14 +97,28 @@ class CitadelRepositoryImpl @Inject constructor(
         }
 
     override suspend fun searchEntries(query: String, key: SecretKey): List<CitadelItem> =
-        withContext(Dispatchers.IO) {
-            switchboard.citadelDao().searchEntries(query).map { decrypt(it, key).toDomain() }
-        }
+    withContext(Dispatchers.IO) {
+        switchboard.citadelDao().getAllEntries()
+            .map { decrypt(it, key) }
+            .sortedWith(compareByDescending<CitadelEntry> { it.isFavorite }.thenBy { it.title })
+            .filter { entry ->
+                entry.title.contains(query, ignoreCase = true) ||
+                    entry.username.contains(query, ignoreCase = true)
+            }
+            .map { it.toDomain() }
+    }
 
     override suspend fun getEntriesByDomainCandidate(domain: String, key: SecretKey): List<CitadelItem> =
-        withContext(Dispatchers.IO) {
-            switchboard.citadelDao().getEntriesByDomainCandidate(domain).map { decrypt(it, key).toDomain() }
-        }
+    withContext(Dispatchers.IO) {
+        switchboard.citadelDao().getAllEntries()
+            .map { decrypt(it, key) }
+            .sortedWith(compareByDescending<CitadelEntry> { it.isFavorite }.thenBy { it.title })
+            .filter { entry ->
+                (entry.website?.contains(domain, ignoreCase = true) == true) ||
+                    entry.title.contains(domain, ignoreCase = true)
+            }
+            .map { it.toDomain() }
+    }
 
     override suspend fun getEntriesByCategory(category: String, key: SecretKey): List<CitadelItem> =
         withContext(Dispatchers.IO) {
@@ -105,9 +126,12 @@ class CitadelRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getFavoriteEntries(key: SecretKey): List<CitadelItem> =
-        withContext(Dispatchers.IO) {
-            switchboard.citadelDao().getFavoriteEntries().map { decrypt(it, key).toDomain() }
-        }
+    withContext(Dispatchers.IO) {
+        switchboard.citadelDao().getFavoriteEntries()
+            .map { decrypt(it, key) }
+            .sortedBy { it.title }
+            .map { it.toDomain() }
+    }
 
     override suspend fun getAllCategories(): List<String> =
         withContext(Dispatchers.IO) { switchboard.citadelDao().getAllCategories() }
@@ -119,13 +143,25 @@ class CitadelRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             val entries = switchboard.citadelDao().getAllEntries()
             val reencrypted = entries.map { entry ->
+                val decryptedTitle = CryptoManager.decrypt(entry.title, oldKey)
+                val decryptedUsername = CryptoManager.decrypt(entry.username, oldKey)
                 val decryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, oldKey)
+                val decryptedWebsite = if (!entry.website.isNullOrEmpty()) {
+                    CryptoManager.decrypt(entry.website!!, oldKey)
+                } else null
+                val decryptedNotes = if (!entry.notes.isNullOrEmpty()) {
+                    CryptoManager.decrypt(entry.notes!!, oldKey)
+                } else null
                 val decryptedTotp = if (!entry.totpSecret.isNullOrEmpty()) {
                     CryptoManager.decrypt(entry.totpSecret!!, oldKey)
                 } else null
 
                 entry.copy(
+                    title = CryptoManager.encrypt(decryptedTitle, newKey),
+                    username = CryptoManager.encrypt(decryptedUsername, newKey),
                     encryptedPassword = CryptoManager.encrypt(decryptedPassword, newKey),
+                    website = decryptedWebsite?.let { CryptoManager.encrypt(it, newKey) },
+                    notes = decryptedNotes?.let { CryptoManager.encrypt(it, newKey) },
                     totpSecret = decryptedTotp?.let { CryptoManager.encrypt(it, newKey) },
                 )
             }
@@ -133,10 +169,18 @@ class CitadelRepositoryImpl @Inject constructor(
         }
 
     private fun decrypt(entry: CitadelEntry, key: SecretKey): CitadelEntry {
-        entry.encryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, key)
-        if (!entry.totpSecret.isNullOrEmpty()) {
-            entry.totpSecret = CryptoManager.decrypt(entry.totpSecret!!, key)
-        }
-        return entry
+    entry.title = CryptoManager.decrypt(entry.title, key)
+    entry.username = CryptoManager.decrypt(entry.username, key)
+    entry.encryptedPassword = CryptoManager.decrypt(entry.encryptedPassword, key)
+    if (!entry.website.isNullOrEmpty()) {
+        entry.website = CryptoManager.decrypt(entry.website!!, key)
     }
+    if (!entry.notes.isNullOrEmpty()) {
+        entry.notes = CryptoManager.decrypt(entry.notes!!, key)
+    }
+    if (!entry.totpSecret.isNullOrEmpty()) {
+        entry.totpSecret = CryptoManager.decrypt(entry.totpSecret!!, key)
+    }
+    return entry
+}
 }

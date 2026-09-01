@@ -28,19 +28,11 @@ interface CitadelDao {
     @Query("DELETE FROM citadel_entries")
     suspend fun deleteAll(): Int
 
-    @Query("SELECT * FROM citadel_entries ORDER BY isFavorite DESC, title ASC")
+    @Query("SELECT * FROM citadel_entries ORDER BY isFavorite DESC")
     suspend fun getAllEntries(): List<CitadelEntry>
 
     @Query("SELECT * FROM citadel_entries WHERE id = :id LIMIT 1")
     suspend fun getEntryById(id: Long): CitadelEntry?
-
-    @Query("""
-        SELECT * FROM citadel_entries
-        WHERE title LIKE '%' || :query || '%'
-           OR username LIKE '%' || :query || '%'
-        ORDER BY isFavorite DESC, title ASC
-    """)
-    suspend fun searchEntries(query: String): List<CitadelEntry>
 
     @Query("""
         SELECT * FROM citadel_entries
@@ -49,15 +41,8 @@ interface CitadelDao {
     """)
     suspend fun getEntriesByCategory(category: String): List<CitadelEntry>
 
-    @Query("""
-        SELECT * FROM citadel_entries
-        WHERE website LIKE '%' || :domain || '%'
-           OR title LIKE '%' || :domain || '%'
-        ORDER BY isFavorite DESC, title ASC
-    """)
-    suspend fun getEntriesByDomainCandidate(domain: String): List<CitadelEntry>
 
-    @Query("SELECT * FROM citadel_entries WHERE isFavorite = 1 ORDER BY title ASC")
+    @Query("SELECT * FROM citadel_entries WHERE isFavorite = 1")
     suspend fun getFavoriteEntries(): List<CitadelEntry>
 
     @Query("SELECT COUNT(*) FROM citadel_entries")
