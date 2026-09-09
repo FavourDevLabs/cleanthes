@@ -2,6 +2,7 @@ package dev.favourdevlabs.cleanthes.data.api
 
 import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import javax.crypto.SecretKey
+import dev.favourdevlabs.cleanthes.domain.model.CitadelHistoryItem
 
 interface CitadelRepository {
 
@@ -48,4 +49,8 @@ interface CitadelRepository {
     suspend fun getEntryCount(): Int
 
     suspend fun reencryptAllEntries(oldKey: SecretKey, newKey: SecretKey)
+
+    suspend fun getHistoryForEntry(entryId: Long, key: SecretKey): List<CitadelHistoryItem>
+
+    suspend fun restoreFromHistory(historyId: Long, key: SecretKey): Int
 }

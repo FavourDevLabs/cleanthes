@@ -11,6 +11,10 @@ import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.GetActiveCitadelPro
 import dev.favourdevlabs.cleanthes.domain.usecase.GetActiveCitadelProfile
 import dev.favourdevlabs.cleanthes.data.impl.usecase.citadel.ActivateCitadelProfileImpl
 import dev.favourdevlabs.cleanthes.domain.usecase.ActivateCitadelProfile
+import dev.favourdevlabs.cleanthes.data.impl.usecase.GetCitadelHistoryImpl
+import dev.favourdevlabs.cleanthes.data.impl.usecase.RestoreCitadelHistoryImpl
+import dev.favourdevlabs.cleanthes.domain.usecase.GetCitadelHistory
+import dev.favourdevlabs.cleanthes.domain.usecase.RestoreCitadelHistory
 import dev.favourdevlabs.cleanthes.data.api.usecase.GetFaviconIcon
 import dev.favourdevlabs.cleanthes.data.api.usecase.InitialiseCitadel
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
@@ -113,4 +117,10 @@ abstract class DataModule {
 
     @Binds @Singleton
     abstract fun bindCheckPasswordBreach(impl: CheckPasswordBreachImpl): CheckPasswordBreach
+
+        @Binds @Singleton
+    abstract fun bindGetCitadelHistory(impl: GetCitadelHistoryImpl): GetCitadelHistory
+
+    @Binds @Singleton
+    abstract fun bindRestoreCitadelHistory(impl: RestoreCitadelHistoryImpl): RestoreCitadelHistory
 }

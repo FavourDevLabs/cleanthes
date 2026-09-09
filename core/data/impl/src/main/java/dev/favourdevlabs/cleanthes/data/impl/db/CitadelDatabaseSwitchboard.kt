@@ -43,6 +43,7 @@ class CitadelDatabaseSwitchboard
                         CleanthesDatabase.MIGRATION_1_2,
                         CleanthesDatabase.MIGRATION_2_3,
                         CleanthesDatabase.MIGRATION_3_4,
+                        CleanthesDatabase.MIGRATION_4_5,
                     )
                     .build()
             }
@@ -67,6 +68,10 @@ class CitadelDatabaseSwitchboard
             getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
                 .auditLogDao()
 
+        fun citadelEntryHistoryDao(): CitadelEntryHistoryDao =
+            getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
+                .citadelEntryHistoryDao()
+        
         /**
          * Deletes a profile's database file entirely, closing the open
          * connection first if any. Distinct from citadelDao().deleteAll() —

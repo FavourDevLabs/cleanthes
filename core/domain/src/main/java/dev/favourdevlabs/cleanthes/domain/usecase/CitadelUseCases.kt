@@ -5,6 +5,7 @@ import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
+import dev.favourdevlabs.cleanthes.domain.model.CitadelHistoryItem
 
 interface SaveCitadelEntry {
     sealed interface Params {
@@ -78,6 +79,8 @@ interface RecordAuditEvent {
         ENTRY_DELETED,
         EXPORT,
         KEY_ROTATED,
+        ENTRY_HISTORY_VIEWED,
+        ENTRY_RESTORED_FROM_HISTORY,
     }
     suspend operator fun invoke(
         eventType: EventType,
@@ -121,6 +124,7 @@ interface RequestReAuth {
         EXPORT,
         DELETE_ENTRY,
         ROTATE_KEY,
+        VIEW_HISTORY,
     }
 
     sealed interface Challenge {
@@ -142,4 +146,11 @@ interface RequestReAuth {
 interface VerifyMasterPassword {
     /** Verifies [password] against the REAL profile's stored hash only. */
     suspend operator fun invoke(password: String): Boolean
+}
+
+interface GetCitadelHistory {
+    suspend operator fun invoke(entryId: Long, key: SecretKey): List<CitadelHistoryItem>
+}
+interface RestoreCitadelHistory {
+    suspend operator fun invoke(historyId: Long, key: SecretKey): Int
 }

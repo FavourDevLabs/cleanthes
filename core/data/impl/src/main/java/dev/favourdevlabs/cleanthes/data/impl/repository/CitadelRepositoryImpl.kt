@@ -3,6 +3,7 @@ package dev.favourdevlabs.cleanthes.data.impl.repository
 import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
 import dev.favourdevlabs.cleanthes.data.impl.db.CitadelDatabaseSwitchboard
 import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntry
+import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntryHistory
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toDomain
 import dev.favourdevlabs.cleanthes.data.impl.mapper.toEntity
 import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
@@ -12,6 +13,7 @@ import kotlinx.coroutines.withContext
 import javax.crypto.SecretKey
 import javax.inject.Inject
 import javax.inject.Singleton
+import dev.favourdevlabs.cleanthes.domain.model.CitadelHistoryItem
 
 @Singleton
 class CitadelRepositoryImpl @Inject constructor(
@@ -60,22 +62,62 @@ val entry = CitadelEntry(
     }
 
     override suspend fun updateEntry(
-        item: CitadelItem,
-        plainPassword: String,
-        key: SecretKey,
-    ): Int = withContext(Dispatchers.IO) {
-        val entity = item.toEntity().apply {
-    title = CryptoManager.encrypt(item.title, key)
-    username = CryptoManager.encrypt(item.username, key)
-    encryptedPassword = CryptoManager.encrypt(plainPassword, key)
-    website = item.website?.let { CryptoManager.encrypt(it, key) }
-    notes = item.notes?.let { CryptoManager.encrypt(it, key) }
-    totpSecret = if (!item.totpSecret.isNullOrEmpty())
+    item: CitadelItem,
+    plainPassword: String,
+    key: SecretKey,
+): Int = withContext(Dispatchers.IO) {
+    val existing = switchboard.citadelDao().getEntryById(item.id)
+
+    val newEncryptedPassword = CryptoManager.encrypt(plainPassword, key)
+    val newTotpSecret = if (!item.totpSecret.isNullOrEmpty())
         CryptoManager.encrypt(item.totpSecret!!, key) else null
-    updatedAt = System.currentTimeMillis()
-}
-        switchboard.citadelDao().update(entity)
+
+    if (existing != null) {
+        val existingTitle = CryptoManager.decrypt(existing.title, key)
+        val existingUsername = CryptoManager.decrypt(existing.username, key)
+        val existingPassword = CryptoManager.decrypt(existing.encryptedPassword, key)
+        val existingWebsite = if (!existing.website.isNullOrEmpty())
+            CryptoManager.decrypt(existing.website!!, key) else null
+                val existingNotes = if (!existing.notes.isNullOrEmpty())
+            CryptoManager.decrypt(existing.notes!!, key) else null
+        val existingTotpSecret = if (!existing.totpSecret.isNullOrEmpty())
+            CryptoManager.decrypt(existing.totpSecret!!, key) else null
+
+        val contentChanged =
+            existingTitle != item.title ||
+                existingUsername != item.username ||
+                existingPassword != plainPassword ||
+                existingWebsite != item.website ||
+                existingNotes != item.notes ||
+                existingTotpSecret != item.totpSecret
+
+        if (contentChanged) {
+            switchboard.citadelEntryHistoryDao().insert(
+                CitadelEntryHistory(
+                    entryId = existing.id,
+                    title = existing.title,
+                    username = existing.username,
+                    encryptedPassword = existing.encryptedPassword,
+                    website = existing.website,
+                    notes = existing.notes,
+                    totpSecret = existing.totpSecret,
+                    timestamp = System.currentTimeMillis(),
+                )
+            )
+        }
     }
+
+    val entity = item.toEntity().apply {
+        title = CryptoManager.encrypt(item.title, key)
+        username = CryptoManager.encrypt(item.username, key)
+        encryptedPassword = newEncryptedPassword
+        website = item.website?.let { CryptoManager.encrypt(it, key) }
+        notes = item.notes?.let { CryptoManager.encrypt(it, key) }
+        totpSecret = newTotpSecret
+        updatedAt = System.currentTimeMillis()
+    }
+    switchboard.citadelDao().update(entity)
+}   
 
     override suspend fun deleteEntry(id: Long): Int =
         withContext(Dispatchers.IO) { switchboard.citadelDao().deleteById(id) }
@@ -168,6 +210,57 @@ val entry = CitadelEntry(
             switchboard.citadelDao().updateAll(reencrypted)
         }
 
+    override suspend fun getHistoryForEntry(entryId: Long, key: SecretKey): List<CitadelHistoryItem> =
+        withContext(Dispatchers.IO) {
+            switchboard.citadelEntryHistoryDao().getHistoryForEntry(entryId).map { history ->
+                CitadelHistoryItem(
+                    id = history.id,
+                    entryId = history.entryId,
+                    title = CryptoManager.decrypt(history.title, key),
+                    username = CryptoManager.decrypt(history.username, key),
+                    password = CryptoManager.decrypt(history.encryptedPassword, key),
+                    website = history.website?.let { CryptoManager.decrypt(it, key) },
+                    notes = history.notes?.let { CryptoManager.decrypt(it, key) },
+                    totpSecret = history.totpSecret?.let { CryptoManager.decrypt(it, key) },   
+                    timestamp = history.timestamp,
+                )
+            }
+        }
+
+    override suspend fun restoreFromHistory(historyId: Long, key: SecretKey): Int =
+        withContext(Dispatchers.IO) {
+            val history = switchboard.citadelEntryHistoryDao().getHistoryById(historyId)
+                ?: return@withContext 0
+            val current = switchboard.citadelDao().getEntryById(history.entryId)
+                ?: return@withContext 0
+
+            // Snapshot the CURRENT state before overwriting it — a restore is
+            // itself an undoable edit, not a destructive overwrite.
+            switchboard.citadelEntryHistoryDao().insert(
+                CitadelEntryHistory(
+                    entryId = current.id,
+                    title = current.title,
+                    username = current.username,
+                    encryptedPassword = current.encryptedPassword,
+                    website = current.website,
+                    notes = current.notes,
+                    totpSecret = current.totpSecret,
+                    timestamp = System.currentTimeMillis(),
+                )
+            )
+
+            val restored = current.copy(
+                title = history.title,
+                username = history.username,
+                encryptedPassword = history.encryptedPassword,
+                website = history.website,
+                notes = history.notes,
+                totpSecret = history.totpSecret,
+                updatedAt = System.currentTimeMillis(),
+            )
+            switchboard.citadelDao().update(restored)
+        }   
+
     private fun decrypt(entry: CitadelEntry, key: SecretKey): CitadelEntry {
     entry.title = CryptoManager.decrypt(entry.title, key)
     entry.username = CryptoManager.decrypt(entry.username, key)
@@ -183,4 +276,6 @@ val entry = CitadelEntry(
     }
     return entry
 }
+
+
 }

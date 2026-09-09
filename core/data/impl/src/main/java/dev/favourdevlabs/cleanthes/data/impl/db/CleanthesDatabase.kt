@@ -8,16 +8,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import android.content.Context
 import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntry
 import dev.favourdevlabs.cleanthes.data.impl.entities.AuditLogEntry
+import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntryHistory
 
 @Database(
-    entities = [CitadelEntry::class, AuditLogEntry::class],
-    version = 4,
+    entities = [CitadelEntry::class, AuditLogEntry::class, CitadelEntryHistory::class],
+    version = 5,
     exportSchema = true
 )
 abstract class CleanthesDatabase : RoomDatabase() {
 
     abstract fun citadelDao(): CitadelDao
     abstract fun auditLogDao(): AuditLogDao
+    abstract fun citadelEntryHistoryDao(): CitadelEntryHistoryDao
 
     companion object {
 
@@ -51,5 +53,26 @@ abstract class CleanthesDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS citadel_entry_history (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "entryId INTEGER NOT NULL, " +
+                    "title TEXT NOT NULL, " +
+                    "username TEXT NOT NULL, " +
+                    "encryptedPassword TEXT NOT NULL, " +
+                    "website TEXT, " +
+                    "notes TEXT, " +
+                    "totpSecret TEXT, " +
+                    "timestamp INTEGER NOT NULL, " +
+                    "FOREIGN KEY(entryId) REFERENCES citadel_entries(id) ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_citadel_entry_history_entryId ON citadel_entry_history(entryId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_citadel_entry_history_timestamp ON citadel_entry_history(timestamp)")
+            }
+        }
+
     }
-}
+
+  }
