@@ -9,11 +9,11 @@ package dev.favourdevlabs.cleanthes.domain.model
 data class CitadelHistoryItem(
     val id: Long,
     val entryId: Long,
-    val title: String,
-    val username: String,
-    val password: String,
-    val website: String?,
-    val notes: String?,
-    val totpSecret: String?,
+    override val title: String,
+    override val username: String,
+    override val password: String,
+    override val website: String?,
+    override val notes: String?,
+    override val totpSecret: String?,
     val timestamp: Long,
-)
+) : CitadelFields

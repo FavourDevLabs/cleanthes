@@ -214,6 +214,8 @@ private fun iconFor(eventType: String): Pair<ImageVector, Color> =
         "ENTRY_EDITED" -> Icons.Default.Edit to TextSecondary
         "ENTRY_DELETED" -> Icons.Default.Delete to Color(0xFFCF6679)
         "EXPORT" -> Icons.Default.IosShare to GoldPrimary
+        "ENTRY_HISTORY_VIEWED" -> Icons.Default.Visibility to TextSecondary
+        "ENTRY_RESTORED_FROM_HISTORY" -> Icons.Default.CheckCircle to GoldPrimary
         else -> Icons.Default.Lock to TextSecondary
     }
 
@@ -226,6 +228,8 @@ private fun labelFor(entry: AuditLogItem): String =
         "ENTRY_EDITED" -> "Edited \u201C${entry.entryTitle ?: "entry"}\u201D"
         "ENTRY_DELETED" -> "Deleted \u201C${entry.entryTitle ?: "entry"}\u201D"
         "EXPORT" -> "Citadel exported"
+        "ENTRY_HISTORY_VIEWED" -> "Viewed history for \u201C${entry.entryTitle ?: "entry"}\u201D"
+        "ENTRY_RESTORED_FROM_HISTORY" -> "Restored a past version of \u201C${entry.entryTitle ?: "entry"}\u201D"
         else -> entry.eventType
     }
 

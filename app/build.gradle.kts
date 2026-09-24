@@ -112,6 +112,7 @@ dependencies {
     implementation(project(":core:security:attestation:api"))
     implementation(project(":core:security:attestation:impl"))
     implementation(project(":feature:auditlog"))
+    implementation(project(":feature:history"))
     implementation(project(":feature:export"))
 
     // ── Hilt ─────────────────────────────────────────────────────────────────

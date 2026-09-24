@@ -6,6 +6,7 @@ import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import dev.favourdevlabs.cleanthes.domain.model.CitadelHistoryItem
+import dev.favourdevlabs.cleanthes.domain.model.CitadelFields
 
 interface SaveCitadelEntry {
     sealed interface Params {
@@ -149,8 +150,29 @@ interface VerifyMasterPassword {
 }
 
 interface GetCitadelHistory {
+    enum class ChangedField {
+        TITLE, USERNAME, PASSWORD, WEBSITE, NOTES, TOTP
+    }
+
     suspend operator fun invoke(entryId: Long, key: SecretKey): List<CitadelHistoryItem>
 }
+
+/**
+ * Fields that differ going from [older] to [newer]. Used to label a
+ * history row with what changed at that point in time, without
+ * exposing the actual old/new values in a list view. [older] and
+ * [newer] may each be a CitadelHistoryItem or the live CitadelItem —
+ * CitadelFields lets either be compared against the other.
+ */
+fun diffHistoryFields(older: CitadelFields, newer: CitadelFields): Set<GetCitadelHistory.ChangedField> =
+    buildSet {
+        if (older.title != newer.title) add(GetCitadelHistory.ChangedField.TITLE)
+        if (older.username != newer.username) add(GetCitadelHistory.ChangedField.USERNAME)
+        if (older.password != newer.password) add(GetCitadelHistory.ChangedField.PASSWORD)
+        if (older.website != newer.website) add(GetCitadelHistory.ChangedField.WEBSITE)
+        if (older.notes != newer.notes) add(GetCitadelHistory.ChangedField.NOTES)
+        if (older.totpSecret != newer.totpSecret) add(GetCitadelHistory.ChangedField.TOTP)
+    }
 interface RestoreCitadelHistory {
     suspend operator fun invoke(historyId: Long, key: SecretKey): Int
 }

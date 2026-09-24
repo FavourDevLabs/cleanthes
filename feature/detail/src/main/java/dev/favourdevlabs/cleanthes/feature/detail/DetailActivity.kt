@@ -24,6 +24,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.History
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -148,13 +149,21 @@ class DetailActivity : AuthenticatedActivity() {
                     )
                 }
 
-                DetailScreen(
+                                DetailScreen(
                     uiState = uiState,
                     onBack = { finish() },
                     onEdit = {
                         startActivity(
                             Intent().apply {
                                 setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.addedit.AddEditActivity")
+                                putExtra("extra_entry_id", entryId)
+                            },
+                        )
+                    },
+                    onViewHistory = {
+                        startActivity(
+                            Intent().apply {
+                                setClassName(packageName, "dev.favourdevlabs.cleanthes.feature.history.HistoryActivity")
                                 putExtra("extra_entry_id", entryId)
                             },
                         )
@@ -194,6 +203,7 @@ private fun DetailScreen(
     uiState: DetailUiState,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onViewHistory: () -> Unit,
     onTogglePassword: () -> Unit,
     onCheckBreach: () -> Unit,
     onCopy: (label: String, value: String) -> Unit,
@@ -204,7 +214,7 @@ private fun DetailScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
     ) {
-        DetailToolbar(title = uiState.title, onBack = onBack, onEdit = onEdit)
+        DetailToolbar(title = uiState.title, onBack = onBack, onEdit = onEdit, onViewHistory = onViewHistory)
 
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -226,6 +236,7 @@ private fun DetailToolbar(
     title: String,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    onViewHistory: () -> Unit,
 ) {
     Column {
         Row(
@@ -254,6 +265,13 @@ private fun DetailToolbar(
                         .weight(1f)
                         .padding(start = 4.dp),
             )
+                        IconButton(onClick = onViewHistory) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "View version history",
+                    tint = TextSecondary,
+                )
+            }
             Button(
                 onClick = onEdit,
                 modifier = Modifier.height(36.dp),
