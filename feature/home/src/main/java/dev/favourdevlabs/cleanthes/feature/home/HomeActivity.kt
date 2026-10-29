@@ -99,7 +99,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.favourdevlabs.cleanthes.common.ClipboardHelper
 import dev.favourdevlabs.cleanthes.domain.model.CitadelItem
 import dev.favourdevlabs.cleanthes.ui.base.AuthenticatedActivity
-import dev.favourdevlabs.cleanthes.ui.components.HexagonShape
+import androidx.compose.foundation.shape.CircleShape
+import dev.favourdevlabs.cleanthes.ui.components.OctagonShape
 import dev.favourdevlabs.cleanthes.ui.components.cleanthesOutlinedTextFieldColors
 import dev.favourdevlabs.cleanthes.ui.theme.CleanthesTheme
 import dev.favourdevlabs.cleanthes.ui.theme.GoldBright
@@ -572,21 +573,30 @@ private fun EntryCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Avatar
+            // Avatar — outer octagon "seal" ring, inner circle "medallion" holding
+            // either the real favicon or the fallback letter.
             Box(modifier = Modifier.size(44.dp)) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(OctagonShape)
+                            .background(SurfaceModal),
+                )
                 if (icon != null) {
                     Box(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .clip(HexagonShape)
+                                .padding(6.dp)
+                                .clip(CircleShape)
                                 .background(SurfaceModal),
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(
                             bitmap = icon,
                             contentDescription = null,
-                            modifier = Modifier.padding(8.dp),
+                            modifier = Modifier.padding(4.dp),
                         )
                     }
                 } else {
@@ -594,7 +604,8 @@ private fun EntryCard(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .clip(HexagonShape)
+                                .padding(6.dp)
+                                .clip(CircleShape)
                                 .background(avatarColor(entry)),
                         contentAlignment = Alignment.Center,
                     ) {
