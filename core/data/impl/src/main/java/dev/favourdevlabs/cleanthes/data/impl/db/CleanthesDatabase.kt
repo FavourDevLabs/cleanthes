@@ -12,7 +12,7 @@ import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntryHistory
 
 @Database(
     entities = [CitadelEntry::class, AuditLogEntry::class, CitadelEntryHistory::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class CleanthesDatabase : RoomDatabase() {
@@ -70,6 +70,14 @@ abstract class CleanthesDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_citadel_entry_history_entryId ON citadel_entry_history(entryId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_citadel_entry_history_timestamp ON citadel_entry_history(timestamp)")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Audit-log titles were stored in plaintext before v6. From v6 they are sealed with the
+                // vault key, so legacy values are cleared rather than carried forward.
+                db.execSQL("UPDATE audit_log SET entryTitle = NULL")
             }
         }
 

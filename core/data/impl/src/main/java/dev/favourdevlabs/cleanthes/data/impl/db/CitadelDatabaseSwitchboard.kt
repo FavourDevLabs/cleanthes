@@ -3,6 +3,7 @@ package dev.favourdevlabs.cleanthes.data.impl.db
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.domain.model.CitadelProfile
 import javax.inject.Inject
@@ -44,6 +45,7 @@ class CitadelDatabaseSwitchboard
                         CleanthesDatabase.MIGRATION_2_3,
                         CleanthesDatabase.MIGRATION_3_4,
                         CleanthesDatabase.MIGRATION_4_5,
+                        CleanthesDatabase.MIGRATION_5_6,
                     )
                     .build()
             }
@@ -71,6 +73,11 @@ class CitadelDatabaseSwitchboard
         fun citadelEntryHistoryDao(): CitadelEntryHistoryDao =
             getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
                 .citadelEntryHistoryDao()
+
+        /** Runs [block] in one transaction on the active profile's database. */
+        suspend fun <T> inTransaction(block: suspend () -> T): T =
+            getOrCreate(activeProfile ?: error("No citadel profile active — session is locked"))
+                .withTransaction(block)
         
         /**
          * Deletes a profile's database file entirely, closing the open

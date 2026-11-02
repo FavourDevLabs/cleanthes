@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import dev.favourdevlabs.cleanthes.data.impl.entities.CitadelEntryHistory
 
 @Dao
@@ -19,4 +20,13 @@ interface CitadelEntryHistoryDao {
 
     @Query("DELETE FROM citadel_entry_history WHERE entryId = :entryId")
     suspend fun deleteHistoryForEntry(entryId: Long): Int
+
+    @Query("SELECT * FROM citadel_entry_history")
+    suspend fun getAll(): List<CitadelEntryHistory>
+
+    @Update
+    suspend fun updateAll(items: List<CitadelEntryHistory>)
+
+    @Query("DELETE FROM citadel_entry_history WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>): Int
 }

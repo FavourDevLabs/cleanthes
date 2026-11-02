@@ -22,4 +22,10 @@ interface AuditLogDao {
 
     @Query("DELETE FROM audit_log")
     suspend fun deleteAll(): Int
+
+    @Query("UPDATE audit_log SET entryTitle = :title WHERE id = :id")
+    suspend fun updateTitle(
+        id: Long,
+        title: String?,
+    ): Int
 }

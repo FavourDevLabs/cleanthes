@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.favourdevlabs.cleanthes.data.api.CitadelRepository
 import dev.favourdevlabs.cleanthes.data.api.usecase.LoadCitadelCredentials
 import dev.favourdevlabs.cleanthes.data.impl.db.CitadelDatabaseSwitchboard
+import dev.favourdevlabs.cleanthes.data.impl.audit.AuditAndHistoryReencryptor
 import dev.favourdevlabs.cleanthes.data.impl.db.CitadelFilenameProvider
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_ENC_SALT
 import dev.favourdevlabs.cleanthes.data.impl.prefs.KEY_WRAPPED_CITADEL_KEY_PASSWORD
@@ -24,6 +25,7 @@ class RotateCitadelKeyImpl @Inject constructor(
     private val citadelRepository: CitadelRepository,
     private val switchboard: CitadelDatabaseSwitchboard,
     private val filenameProvider: CitadelFilenameProvider,
+    private val auditAndHistoryReencryptor: AuditAndHistoryReencryptor,
 ) : RotateCitadelKey {
 
     override suspend fun invoke(
@@ -42,7 +44,10 @@ class RotateCitadelKeyImpl @Inject constructor(
 
         val newCitadelKey = KeyDerivation.generateCitadelKey()
 
-        citadelRepository.reencryptAllEntries(currentCitadelKey, newCitadelKey)
+        switchboard.inTransaction {
+            citadelRepository.reencryptAllEntries(currentCitadelKey, newCitadelKey)
+            auditAndHistoryReencryptor.reencrypt(currentCitadelKey, newCitadelKey)
+        }
 
         val newEncSaltBytes = KeyDerivation.generateSalt()
         val newEncSalt = Base64.encodeToString(newEncSaltBytes, Base64.NO_WRAP)
